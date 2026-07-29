@@ -52,11 +52,23 @@ export async function middleware(request: NextRequest) {
 
   const secret = process.env["AUTH_SECRET"] || process.env["NEXTAUTH_SECRET"] || "64_char_random_secret_string_for_taskbridge_nl_auth_secret_key_1234";
 
+  // Find active session cookie dynamically
+  const sessionCookie =
+    request.cookies.get("__Secure-next-auth.session-token") ||
+    request.cookies.get("next-auth.session-token") ||
+    request.cookies.get("__Secure-authjs.session-token") ||
+    request.cookies.get("authjs.session-token");
+
   // Read JWT from cookie — pure edge-compatible, no Prisma
-  const token = await getToken({
-    req:    request,
+  const token = (await getToken({
+    req:          request,
     secret,
-  });
+    cookieName:   sessionCookie?.name ?? "__Secure-next-auth.session-token",
+    secureCookie: process.env.NODE_ENV === "production" || request.url.startsWith("https"),
+  })) || (await getToken({
+    req:          request,
+    secret,
+  }));
 
   const isLoggedIn = Boolean(token);
   const role       = token?.["role"] as UserRole | undefined;
