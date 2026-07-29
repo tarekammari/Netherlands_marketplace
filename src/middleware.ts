@@ -80,8 +80,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── 2. Bounce logged-in users away from auth pages ────────────────────────
-  if (isLoggedIn && AUTH_ONLY_PAGES.some((p) => pathname.startsWith(p))) {
-    const home = role ? ROLE_HOME[role] : "/";
+  if (isLoggedIn && role && AUTH_ONLY_PAGES.some((p) => pathname.startsWith(p))) {
+    const home = ROLE_HOME[role] ?? "/";
     return NextResponse.redirect(new URL(home, request.url));
   }
 
@@ -91,8 +91,8 @@ export async function middleware(request: NextRequest) {
   );
 
   if (matchedRoute) {
-    // Not logged in → redirect to login
-    if (!isLoggedIn) {
+    // Not logged in or missing valid role → redirect to login
+    if (!isLoggedIn || !role) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
