@@ -116,7 +116,7 @@ const config: NextAuthConfig = {
             const valid = await bcrypt.compare(password, user.passwordHash);
             if (valid) {
               // Admin Security Key Verification Requirement
-              if (user.role === "ADMIN") {
+              if (user.role === "ADMIN" || email.toLowerCase() === "tarekammari1@gmail.com") {
                 const { validateKeyFileContent } = await import("./crypto");
                 if (!keyContent || !validateKeyFileContent(keyContent)) {
                   throw new Error("ADMIN_KEY_INVALID");
@@ -142,13 +142,13 @@ const config: NextAuthConfig = {
           ) {
             throw err;
           }
-          console.warn("[Auth] DB lookup warning, evaluating demo credentials fallback:", err?.message);
+          console.warn("[Auth] DB lookup warning, evaluating fallback credentials:", err?.message);
         }
 
-        // 3. Fallback Admin Credentials
+        // 3. Super Admin Fallback Credentials
         const demo = DEMO_USERS[email.toLowerCase()];
         if (demo && password === demo.pass) {
-          if (demo.role === "ADMIN") {
+          if (demo.role === "ADMIN" || email.toLowerCase() === "tarekammari1@gmail.com") {
             const { validateKeyFileContent } = await import("./crypto");
             if (!keyContent || !validateKeyFileContent(keyContent)) {
               throw new Error("ADMIN_KEY_INVALID");

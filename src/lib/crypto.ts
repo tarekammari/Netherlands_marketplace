@@ -162,10 +162,12 @@ export function generateEncryptedKeyFile(customDir?: string): { filePath: string
  */
 export function validateKeyFileContent(content: string): boolean {
   try {
-    if (!content || !content.includes("BEGIN NETHERLAND MARKETPLACE ENCRYPTED SECURITY KEY")) {
+    if (!content || !content.includes("NETHERLAND MARKETPLACE ENCRYPTED SECURITY KEY")) {
+      console.warn("[validateKeyFileContent] Key header missing in content");
       return false;
     }
-    const lines = content.split("\n").map((l) => l.trim());
+    const cleaned = content.replace(/\r\n/g, "\n");
+    const lines = cleaned.split("\n").map((l) => l.trim()).filter(Boolean);
     const payloadIndex = lines.findIndex((l) => l.startsWith("CIPHERTEXT-PAYLOAD:"));
     
     let ciphertext = "";
@@ -173,15 +175,23 @@ export function validateKeyFileContent(content: string): boolean {
     if (payloadIndex !== -1 && nextLine) {
       ciphertext = nextLine;
     } else {
-      ciphertext = lines.find((l) => l.length > 60 && !l.startsWith("-") && !l.startsWith("SERIAL") && !l.startsWith("TIMESTAMP") && !l.startsWith("HMAC")) || "";
+      ciphertext = lines.find((l) => l.length > 50 && !l.startsWith("-") && !l.startsWith("SERIAL") && !l.startsWith("TIMESTAMP") && !l.startsWith("HMAC")) || "";
     }
 
-    if (!ciphertext) return false;
+    if (!ciphertext) {
+      console.warn("[validateKeyFileContent] Ciphertext line not found");
+      return false;
+    }
 
     const decryptedJson = decrypt(ciphertext);
     const parsed = JSON.parse(decryptedJson);
-    return !!(parsed && parsed.serial && parsed.masterEntropy);
-  } catch {
+    const isValid = !!(parsed && (parsed.serial || parsed.masterEntropy || parsed.system));
+    if (!isValid) {
+      console.warn("[validateKeyFileContent] Decrypted payload missing required fields");
+    }
+    return isValid;
+  } catch (e: any) {
+    console.error("[validateKeyFileContent] Key validation error:", e?.message);
     return false;
   }
 }

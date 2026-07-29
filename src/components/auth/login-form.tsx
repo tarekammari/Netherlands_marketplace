@@ -1,8 +1,9 @@
 /**
  * src/components/auth/login-form.tsx
  *
- * Client-side login form with react-hook-form + Zod validation.
- * Supports 2-Factor Authentication via Encrypted Security Key (.key) file for Admin accounts.
+ * 2-Step Clean Authentication Form.
+ * Step 1: Validates Email & Password.
+ * Step 2: Demands Security Key File (.key) for Admin accounts. Completely hides key contents.
  */
 
 "use client";
@@ -13,20 +14,19 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { Eye, EyeOff, Key, Upload, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Key, Upload, ShieldCheck, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
 import { Input, FormField } from "@/components/ui/input";
 
-// ── Error message map ─────────────────────────────────────────────────────────
 const AUTH_ERRORS: Record<string, string> = {
   CredentialsSignin:        "Invalid email or password.",
   EMAIL_NOT_VERIFIED:      "Please verify your email address before signing in.",
-  ACCOUNT_BANNED:          "Your account has been suspended. Contact support.",
-  ACCOUNT_PENDING_APPROVAL:"Your registration is complete and pending validation by the Admin.",
-  ADMIN_KEY_INVALID:       "Admin security key file (.key) is required or invalid.",
-  Default:                  "Something went wrong. Please try again.",
+  ACCOUNT_BANNED:          "Your account has been suspended.",
+  ACCOUNT_PENDING_APPROVAL:"Your registration is pending admin validation.",
+  ADMIN_KEY_INVALID:       "Invalid or missing .key security file.",
+  Default:                  "Authentication failed. Please check your credentials.",
 };
 
 export function LoginForm() {
@@ -37,6 +37,7 @@ export function LoginForm() {
 
   const [step, setStep]                 = useState<"CREDENTIALS" | "ADMIN_KEY">("CREDENTIALS");
   const [showPassword, setShowPassword] = useState(false);
+  const [verifying, setVerifying]       = useState(false);
   const [keyContent, setKeyContent]     = useState<string>("");
   const [keyFileName, setKeyFileName]   = useState<string>("");
   const [authError, setAuthError]       = useState<string | null>(
@@ -53,12 +54,14 @@ export function LoginForm() {
     resolver: zodResolver(loginSchema),
   });
 
-  // Handle key file upload
+  // Handle key file selection without showing plain text key
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setKeyFileName(file.name);
+    setAuthError(null);
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
@@ -68,41 +71,82 @@ export function LoginForm() {
     reader.readAsText(file);
   };
 
-  const onSubmit = async (data: LoginInput) => {
+  // Step 1: Validate Email & Password upfront
+  const onStep1Submit = async (data: LoginInput) => {
+    setAuthError(null);
+    setVerifying(true);
+
+    try {
+      const res = await fetch("/api/auth/verify-credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: data.email, password: data.password }),
+      });
+
+      const verifyData = await res.json();
+
+      if (!res.ok || !verifyData.valid) {
+        setAuthError(verifyData.error || "Invalid email or password.");
+        setVerifying(false);
+        return;
+      }
+
+      // If Admin requires key file -> Proceed to Step 2
+      if (verifyData.requiresKey) {
+        setStep("ADMIN_KEY");
+        setVerifying(false);
+        return;
+      }
+
+      // Regular non-admin login
+      const result = await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setAuthError(AUTH_ERRORS[result.error] ?? AUTH_ERRORS["Default"]!);
+        setVerifying(false);
+        return;
+      }
+
+      router.push(callbackUrl);
+      router.refresh();
+    } catch {
+      setAuthError("Failed to connect to authentication server.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  // Step 2: Final Admin Key Authentication
+  const onStep2Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setAuthError(null);
 
-    // If user is Admin or logging in with admin email and hasn't passed key yet, trigger Key step
-    if (data.email.toLowerCase() === "tarekammari1@gmail.com" && step === "CREDENTIALS" && !keyContent) {
-      setStep("ADMIN_KEY");
+    if (!keyContent) {
+      setAuthError("Please select your .key security file.");
       return;
     }
 
+    const email = getValues("email");
+    const password = getValues("password");
+
     const result = await signIn("credentials", {
-      email:      data.email,
-      password:   data.password,
-      keyContent: keyContent || data.keyContent,
-      redirect:   false,
+      email,
+      password,
+      keyContent,
+      redirect: false,
     });
 
     if (result?.error) {
-      if (result.error === "ADMIN_KEY_INVALID") {
-        setStep("ADMIN_KEY");
-        setAuthError("🔒 Security key file required. Please upload your .key file to verify Admin access.");
-      } else {
-        setAuthError(AUTH_ERRORS[result.error] ?? AUTH_ERRORS["Default"]!);
-      }
+      setAuthError(AUTH_ERRORS[result.error] ?? "Invalid security key file.");
       return;
     }
 
-    router.push(callbackUrl);
+    router.push("/admin");
     router.refresh();
-  };
-
-  const handleAdminQuickLoginClick = () => {
-    setValue("email", "tarekammari1@gmail.com");
-    setValue("password", "netherland@app@marketplace@2026!!!");
-    setStep("ADMIN_KEY");
-    setAuthError(null);
   };
 
   return (
@@ -145,7 +189,7 @@ export function LoginForm() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <form onSubmit={handleSubmit(onStep1Submit)} className="space-y-4" noValidate>
             {authError && (
               <div role="alert" className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 font-medium">
                 {authError}
@@ -191,104 +235,81 @@ export function LoginForm() {
               </Link>
             </div>
 
-            <Button type="submit" className="w-full" size="lg" isLoading={isSubmitting}>
+            <Button type="submit" className="w-full" size="lg" isLoading={isSubmitting || verifying}>
               Sign in
             </Button>
-
-            <div className="pt-4 mt-4 border-t border-neutral-100 space-y-2">
-              <p className="text-xs text-neutral-500 font-medium text-center">Super Admin Access:</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full font-bold text-orange-600 border-orange-200 hover:bg-orange-50 flex items-center justify-center gap-2"
-                onClick={handleAdminQuickLoginClick}
-              >
-                <ShieldCheck className="h-4 w-4 text-orange-600" />
-                <span>👑 Super Admin Sign In (Requires .key file)</span>
-              </Button>
-            </div>
           </form>
         </>
       ) : (
-        /* STEP 2: ADMIN SECURITY KEY FILE STEP */
-        <div className="space-y-4 pt-2">
-          <div className="rounded-2xl bg-orange-950/5 border border-orange-200 p-5 text-left">
-            <div className="flex items-center gap-2 text-orange-700 font-bold font-mono text-xs uppercase mb-1">
-              <Key className="h-4 w-4 text-orange-600" />
-              <span>Step 2 of 2: Admin Security Key File Required</span>
+        /* STEP 2: MINIMALIST CLEAN KEY FILE UPLOAD STEP */
+        <div className="space-y-5 pt-1 text-center">
+          <div className="flex flex-col items-center">
+            <div className="w-12 h-12 rounded-full bg-orange-100 border border-orange-300 flex items-center justify-center text-orange-600 mb-3 shadow-sm">
+              <Key className="h-6 w-6" />
             </div>
-            <h2 className="text-base font-bold text-neutral-900">
-              Upload Your Encrypted .key File
-            </h2>
-            <p className="text-xs text-neutral-600 mt-1 leading-relaxed">
-              Email & password confirmed. Please upload your assigned <code className="font-mono text-orange-700 bg-orange-100 px-1 py-0.5 rounded">netherland_market_key_*.key</code> security file to complete authentication.
+            <h2 className="text-lg font-bold text-neutral-900">Admin Key Required</h2>
+            <p className="text-xs text-neutral-500 mt-1 font-mono">
+              Upload your security key file to complete login
             </p>
           </div>
 
           {authError && (
-            <div role="alert" className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 font-medium">
+            <div role="alert" className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 font-medium text-left">
               {authError}
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <label className="block text-xs font-mono font-bold uppercase tracking-wider text-neutral-700 mb-2">
-                Select .key Security File:
-              </label>
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-neutral-300 rounded-xl cursor-pointer bg-neutral-50 hover:bg-orange-50/50 hover:border-orange-400 transition-all p-4 text-center">
-                <Upload className="h-6 w-6 text-orange-600 mb-2" />
-                <span className="text-xs font-bold text-neutral-800">
-                  {keyFileName ? `Selected: ${keyFileName}` : "Click to browse or drop .key file"}
-                </span>
-                <span className="text-[10px] text-neutral-400 font-mono mt-1">
-                  Accepts netherland_market_key_*.key
-                </span>
-                <input
-                  type="file"
-                  accept=".key,.txt"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                />
-              </label>
-            </div>
-
-            {/* Fallback Text area for key content */}
-            <div>
-              <label className="block text-xs font-mono font-bold uppercase tracking-wider text-neutral-500 mb-1">
-                Or Paste Key Ciphertext Armor:
-              </label>
-              <textarea
-                rows={3}
-                value={keyContent}
-                onChange={(e) => {
-                  setKeyContent(e.target.value);
-                  setValue("keyContent", e.target.value);
-                }}
-                placeholder="-----BEGIN NETHERLAND MARKETPLACE ENCRYPTED SECURITY KEY v1.0-----"
-                className="w-full text-xs font-mono p-3 rounded-lg border border-neutral-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+          <form onSubmit={onStep2Submit} className="space-y-4">
+            <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-neutral-300 rounded-2xl cursor-pointer bg-neutral-50 hover:bg-orange-50/50 hover:border-orange-500 transition-all p-5 shadow-sm">
+              {keyFileName ? (
+                <div className="flex flex-col items-center gap-1.5 text-emerald-700">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-600 animate-bounce" />
+                  <span className="text-xs font-bold font-mono">{keyFileName}</span>
+                  <span className="text-[10px] text-emerald-600 font-mono bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Encrypted Key Loaded
+                  </span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-1 text-neutral-600">
+                  <Upload className="h-7 w-7 text-orange-600 mb-1" />
+                  <span className="text-xs font-bold text-neutral-800">
+                    Upload .key File
+                  </span>
+                  <span className="text-[10px] text-neutral-400 font-mono">
+                    Select netherland_market_key_*.key
+                  </span>
+                </div>
+              )}
+              <input
+                type="file"
+                accept=".key,.txt"
+                className="hidden"
+                onChange={handleFileUpload}
               />
-            </div>
+            </label>
 
             <div className="flex items-center gap-3 pt-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setStep("CREDENTIALS")}
-                className="flex-1"
+                onClick={() => {
+                  setStep("CREDENTIALS");
+                  setKeyContent("");
+                  setKeyFileName("");
+                  setAuthError(null);
+                }}
+                className="w-1/3"
               >
                 <ArrowLeft className="h-4 w-4 mr-1" /> Back
               </Button>
 
               <Button
                 type="submit"
-                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold"
+                className="w-2/3 bg-orange-600 hover:bg-orange-700 text-white font-bold"
                 size="lg"
-                isLoading={isSubmitting}
                 disabled={!keyContent}
               >
-                Verify & Sign In
+                Sign In
               </Button>
             </div>
           </form>
