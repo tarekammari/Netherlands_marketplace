@@ -79,11 +79,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/banned", request.url));
   }
 
-  // ── 2. Bounce logged-in users away from auth pages ────────────────────────
-  if (isLoggedIn && role && AUTH_ONLY_PAGES.some((p) => pathname.startsWith(p))) {
-    const home = ROLE_HOME[role] ?? "/";
-    return NextResponse.redirect(new URL(home, request.url));
-  }
+  // ── 2. Allow direct access to login and register pages ────────────────────
 
   // ── 3. Enforce protected route access ─────────────────────────────────────
   const matchedRoute = PROTECTED_ROUTES.find((r) =>
