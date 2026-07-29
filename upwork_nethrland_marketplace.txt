@@ -1,0 +1,52 @@
+Looking for a Next.js + PostgresSQL + Stripe Connect developer — student/enterprise task marketplace
+We're building a two-sided marketplace connecting university students in the Netherlands with companies looking to outsource short tasks (research, design, data analysis, marketing, etc.). Think of it as a structured, contract-first alternative to generic freelance platforms.
+We need an experienced developer to build this with Next.js and with our data on PostgresSQl with full Stripe Connect integration for milestone-based escrow payments and student payouts.
+The platform needs:
+• Two user types (students and enterprises) with distinct profiles and dashboards
+• Task posting, student applications, and applicant selection flow
+• Auto-generated assignment contracts (PDF) on student selection
+• Stripe Connect Express for student payouts, milestone-based escrow release, and automated platform commission
+• In-platform messaging, review system, and admin panel
+• Clean, minimal design similar to skill-bid.vercel.app
+• Mobile-responsive, SEO-friendly (SSR for public task pages)
+Hard requirements — do not apply if you cannot show both:
+• A live marketplace built with Next.js and PostgresSQL
+• A prior Stripe Connect implementation with escrow or milestone payouts
+In your proposal please include:
+• Links to the above examples
+• A fixed-price quote broken down by phase
+• Your realistic timeline and current availability
+We have a detailed 7-page technical brief ready to share with shortlisted candidates. Fixed-price only — no open hourly quotes.
+--------------------------------------------------------------------
+
+as softwer developer i get this demand from upwork site 'Looking for a Next.js + PostgresSQL + Stripe Connect developer — student/enterprise task marketplace
+We're building a two-sided marketplace connecting university students in the Netherlands with companies looking to outsource short tasks (research, design, data analysis, marketing, etc.). Think of it as a structured, contract-first alternative to generic freelance platforms.
+We need an experienced developer to build this with Next.js and with our data on PostgresSQl with full Stripe Connect integration for milestone-based escrow payments and student payouts.
+The platform needs:
+• Two user types (students and enterprises) with distinct profiles and dashboards
+• Task posting, student applications, and applicant selection flow
+• Auto-generated assignment contracts (PDF) on student selection
+• Stripe Connect Express for student payouts, milestone-based escrow release, and automated platform commission
+• In-platform messaging, review system, and admin panel
+• Clean, minimal design similar to skill-bid.vercel.app
+• Mobile-responsive, SEO-friendly (SSR for public task pages)
+Hard requirements — do not apply if you cannot show both:
+• A live marketplace built with Next.js and PostgresSQL
+• A prior Stripe Connect implementation with escrow or milestone payouts
+In your proposal please include:
+• Links to the above examples
+• A fixed-price quote broken down by phase
+• Your realistic timeline and current availability
+We have a detailed 7-page technical brief ready to share with shortlisted candidates. Fixed-price only — no open hourly quotes.'  , as profitionnel softwer expert first make roadmap for this work and explain each details, and make the app secure top secure, make the code in product level. 
+-----------------------------------------------------------------------------------
+as softwer desinger, do the background image more cleare as in the light them. make the components texts on the glass bg card and handel the view colors bg to be profitonnel and modern,
+--------------------------------------------------------------------------------
+as softwer desinger, make a component bihined the title and description in the home take the hight fitt the title and the description, and take the same color and effecte in the 'Browse open tasks ' button.
+--------------------------------------------------------------
+as softwer desinger make the 'OPEN TASKS NOW, VERIFIED STUDENTS, COMPANIES ONBOARD' the same component withe the title and description in bottom right of the two buttons. for the AI icon make it top of the bottom nav , and make it as width tall button orange 'TaskBridge AI' and has like npl animation.
+--------------------------------------------------------------------------------
+as softwer expert sinior want make the app has new thing with AI , do the AI starts animation in the component withe the title and the description in the top right withe a big light orange backround and ahndel it to be simple and soft to make the visitor focus on it.
+-------------------------------------------------------------------------------------
+make the image bckground in the home page fixe and all the sections scrolle up withe the same gelss effects in title component. 
+MY APPLICATIONS
+MANAGE IBAN & TAX INFO

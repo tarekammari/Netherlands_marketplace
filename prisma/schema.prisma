@@ -1,0 +1,565 @@
+// prisma/schema.prisma
+// ─────────────────────────────────────────────────────────────────────────────
+// Complete database schema for the TaskBridge NL marketplace.
+// All monetary values are stored as INTEGER (euro cents) to avoid float precision issues.
+// UUID primary keys are used everywhere for security (no sequential ID enumeration).
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  STUDENT
+  ENTERPRISE
+  ADMIN
+}
+
+enum TaskStatus {
+  DRAFT         // Enterprise saved but not published
+  OPEN          // Published, accepting applications
+  IN_REVIEW     // Enterprise reviewing applicants
+  ASSIGNED      // Student selected, contract sent
+  IN_PROGRESS   // Contract signed, work started
+  COMPLETED     // Work delivered and approved
+  DISPUTED      // Payment dispute opened
+  CANCELLED     // Task cancelled by enterprise
+}
+
+enum TaskCategory {
+  RESEARCH
+  DESIGN
+  DATA_ANALYSIS
+  MARKETING
+  DEVELOPMENT
+  WRITING
+  FINANCE
+  LEGAL
+  OTHER
+}
+
+enum ApplicationStatus {
+  PENDING   // Student applied, awaiting review
+  REVIEWED  // Enterprise opened the application
+  SHORTLISTED
+  SELECTED  // This student was chosen
+  REJECTED
+  WITHDRAWN // Student withdrew their application
+}
+
+enum PaymentStatus {
+  PENDING     // PaymentIntent created
+  HELD        // Funds captured into escrow
+  RELEASED    // Funds transferred to student
+  REFUNDED    // Funds returned to enterprise
+  DISPUTED    // Under dispute investigation
+}
+
+enum MilestoneStatus {
+  PENDING
+  SUBMITTED   // Student marked as done
+  APPROVED    // Enterprise approved
+  REVISION    // Enterprise requested changes
+}
+
+enum ContractStatus {
+  PENDING_SIGNATURE
+  SIGNED
+  EXPIRED
+  CANCELLED
+}
+
+enum MessageType {
+  TEXT
+  FILE
+  SYSTEM // Auto-generated (e.g. "Task was assigned")
+}
+
+enum NotificationType {
+  APPLICATION_RECEIVED
+  APPLICATION_SELECTED
+  APPLICATION_REJECTED
+  TASK_ASSIGNED
+  MILESTONE_SUBMITTED
+  MILESTONE_APPROVED
+  PAYMENT_RELEASED
+  PAYMENT_HELD
+  CONTRACT_READY
+  MESSAGE_RECEIVED
+  REVIEW_RECEIVED
+  DISPUTE_OPENED
+  DISPUTE_RESOLVED
+}
+
+// ─── AI Agent Enums ────────────────────────────────────────────────────────────────
+
+enum AIEventType {
+  PAGE_VIEW
+  TASK_VIEW
+  TASK_APPLY
+  TASK_SELECT
+  SEARCH_QUERY
+  CHAT_MESSAGE
+  PROFILE_UPDATE
+  APPLICATION_ACCEPTED
+  APPLICATION_REJECTED
+  MILESTONE_APPROVED
+  PAYMENT_RELEASED
+}
+
+enum AIChatRole {
+  USER
+  ASSISTANT
+}
+
+// ─── Core User Model ─────────────────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  emailVerified   DateTime?
+  // Password hash via bcrypt(cost=12). Null for OAuth users.
+  passwordHash    String?
+  role            UserRole  @default(STUDENT)
+  // Encrypted PII fields (AES-256, see lib/crypto.ts)
+  nameEncrypted   String
+  avatarUrl       String?
+  isVerified      Boolean   @default(false)  // KYC / admin verification
+  isBanned        Boolean   @default(false)
+  banReason       String?
+  // Stripe references
+  stripeCustomerId  String?  @unique // enterprise: for charging
+  stripeAccountId   String?  @unique // student: for receiving payouts
+  stripeOnboarded   Boolean  @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // ── Relations ──
+  studentProfile    StudentProfile?
+  enterpriseProfile EnterpriseProfile?
+  accounts          Account[]           // NextAuth OAuth accounts
+  sessions          Session[]           // NextAuth sessions
+  tasksPosted       Task[]              @relation("TaskEnterprise")
+  applications      Application[]       @relation("StudentApplications")
+  sentMessages      Message[]           @relation("MessageSender")
+  notifications     Notification[]
+  reviewsGiven      Review[]            @relation("ReviewerUser")
+  reviewsReceived   Review[]            @relation("ReviewedUser")
+  auditLogs         AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// ─── Profile: Student ─────────────────────────────────────────────────────────
+
+model StudentProfile {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university    String
+  studyField    String
+  yearOfStudy   Int
+  // Stored as comma-separated, queried via array operations in app layer
+  skills        String[]
+  bio           String?
+  portfolioUrl  String?
+  linkedinUrl   String?
+  cvUrl         String?  // Private R2 URL
+  hourlyRateCents Int?   // Optional expected rate
+  // Aggregate stats (denormalised for performance)
+  completedTaskCount  Int   @default(0)
+  avgRating           Float @default(0)
+  totalReviewCount    Int   @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("student_profiles")
+}
+
+// ─── Profile: Enterprise ─────────────────────────────────────────────────────
+
+model EnterpriseProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName     String
+  // Encrypted sensitive fields
+  kvkNumberEncrypted  String   // Dutch Chamber of Commerce number
+  websiteUrl      String?
+  industry        String
+  companySize     String   // e.g. "1-10", "11-50", "51-200"
+  description     String?
+  logoUrl         String?
+  isVerifiedKvk   Boolean  @default(false)
+  // Aggregate stats
+  postedTaskCount   Int   @default(0)
+  completedTaskCount Int  @default(0)
+  avgRating         Float @default(0)
+  totalReviewCount  Int   @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("enterprise_profiles")
+}
+
+// ─── NextAuth Adapter Models ─────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── Tasks ───────────────────────────────────────────────────────────────────
+
+model Task {
+  id              String       @id @default(uuid())
+  enterpriseId    String
+  enterprise      User         @relation("TaskEnterprise", fields: [enterpriseId], references: [id])
+  title           String
+  slug            String       @unique
+  description     String       @db.Text
+  category        TaskCategory
+  skillsRequired  String[]
+  attachments     String[]     @default([])
+  // Budget stored as euro cents (integer). Never use Float for money.
+  budgetCents     Int
+  currency        String       @default("EUR")
+  deadline        DateTime
+  deliverables    String       @db.Text
+  status          TaskStatus   @default(DRAFT)
+  // Full-text search vector — updated via DB trigger (see migrations)
+  searchVector    Unsupported("tsvector")?
+  viewCount       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // ── Relations ──
+  applications  Application[]
+  milestones    Milestone[]
+  contract      Contract?
+  payment       Payment?
+  messages      Message[]
+  reviews       Review[]
+
+  @@index([status])
+  @@index([category])
+  @@index([enterpriseId])
+  @@index([deadline])
+  // searchVector index defined in migration SQL
+  @@map("tasks")
+}
+
+// ─── Applications ─────────────────────────────────────────────────────────────
+
+model Application {
+  id              String            @id @default(uuid())
+  taskId          String
+  task            Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         User              @relation("StudentApplications", fields: [studentId], references: [id])
+  coverLetter     String            @db.Text
+  proposedBudgetCents Int?          // Student can propose a different budget
+  estimatedDays   Int?
+  portfolioLinks  String[]
+  status          ApplicationStatus @default(PENDING)
+  enterpriseNote  String?           // Private note from enterprise
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // One student can only apply once per task
+  @@unique([taskId, studentId])
+  @@index([studentId])
+  @@index([taskId])
+  @@map("applications")
+}
+
+// ─── Milestones ───────────────────────────────────────────────────────────────
+
+model Milestone {
+  id              String          @id @default(uuid())
+  taskId          String
+  task            Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title           String
+  description     String
+  dueDateDate     DateTime
+  amountCents     Int             // Portion of total budget
+  status          MilestoneStatus @default(PENDING)
+  // Student submits deliverables
+  submissionNote  String?
+  submissionFileUrls String[]
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  sortOrder       Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([taskId])
+  @@map("milestones")
+}
+
+// ─── Contracts ────────────────────────────────────────────────────────────────
+
+model Contract {
+  id              String         @id @default(uuid())
+  taskId          String         @unique
+  task            Task           @relation(fields: [taskId], references: [id])
+  studentId       String
+  enterpriseId    String
+  // R2/S3 private URL to the generated PDF
+  pdfUrl          String
+  pdfUrlExpiry    DateTime?
+  status          ContractStatus @default(PENDING_SIGNATURE)
+  // Signature tracking
+  studentSignedAt    DateTime?
+  enterpriseSignedAt DateTime?
+  // Unique token for signing link (single-use)
+  studentSignToken   String     @unique @default(uuid())
+  enterpriseSignToken String    @unique @default(uuid())
+  expiresAt          DateTime
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@map("contracts")
+}
+
+// ─── Payments & Escrow ────────────────────────────────────────────────────────
+
+model Payment {
+  id                     String        @id @default(uuid())
+  taskId                 String        @unique
+  task                   Task          @relation(fields: [taskId], references: [id])
+  studentId              String
+  enterpriseId           String
+  // Stripe references
+  stripePaymentIntentId  String        @unique
+  stripeTransferId       String?       @unique
+  // Amounts in euro cents
+  totalAmountCents       Int
+  platformFeeCents       Int
+  studentAmountCents     Int           // totalAmount - platformFee
+  currency               String        @default("EUR")
+  status                 PaymentStatus @default(PENDING)
+  capturedAt             DateTime?     // When escrow was funded
+  releasedAt             DateTime?     // When student was paid
+  refundedAt             DateTime?
+  // Auto-release safety net: if enterprise doesn't act in 7 days post-milestone
+  autoReleaseAt          DateTime?
+  metadata               Json?         // Extra Stripe metadata
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@map("payments")
+}
+
+// ─── Messaging ────────────────────────────────────────────────────────────────
+
+model Message {
+  id          String      @id @default(uuid())
+  taskId      String
+  task        Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User        @relation("MessageSender", fields: [senderId], references: [id])
+  content     String      @db.Text
+  type        MessageType @default(TEXT)
+  fileUrls    String[]
+  isRead      Boolean     @default(false)
+  readAt      DateTime?
+  // Content is encrypted at-rest with AES-256 (see lib/crypto.ts)
+  isEncrypted Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+
+  @@index([taskId])
+  @@index([senderId])
+  @@map("messages")
+}
+
+// ─── Reviews ─────────────────────────────────────────────────────────────────
+
+model Review {
+  id          String   @id @default(uuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id])
+  reviewerId  String
+  reviewer    User     @relation("ReviewerUser", fields: [reviewerId], references: [id])
+  reviewedId  String
+  reviewed    User     @relation("ReviewedUser", fields: [reviewedId], references: [id])
+  rating      Int      // 1-5 stars
+  comment     String   @db.Text
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  // One review per reviewer per task
+  @@unique([taskId, reviewerId])
+  @@index([reviewedId])
+  @@map("reviews")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  actionUrl String?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+// Immutable log of all sensitive operations for compliance and forensics.
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String   // e.g. "payment.released", "user.banned"
+  entityType String   // e.g. "Payment", "User"
+  entityId   String
+  metadata   Json?    // Extra context (IP, user agent, etc.)
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── TaskBridge AI Agent (TBAI) ─────────────────────────────────────────────────────
+// Self-contained domain intelligence engine — no external LLM dependencies.
+// Learns from behavioral events and persists weights in PostgreSQL.
+
+// Behavioral event log — every user interaction is recorded here.
+// The learner aggregates this into AIInsight every N events.
+model AIEvent {
+  id        String      @id @default(uuid())
+  userId    String?     // null for anonymous events
+  eventType AIEventType
+  // JSON payload varies by event type:
+  // TASK_VIEW: { taskId, taskCategory, taskBudget }
+  // TASK_APPLY: { taskId, applicationId, studentSkills }
+  // CHAT_MESSAGE: { intent, responseMs }
+  payload   Json
+  sessionId String?     // groups events in same browser session
+  createdAt DateTime    @default(now())
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("ai_events")
+}
+
+// Aggregated patterns learned by TBAI.
+// Key examples:
+//   "avg_budget_RESEARCH" → value: "87500" (cents), confidence: 0.91
+//   "top_skills_DESIGN"   → value: "Figma,UX,Illustrator", confidence: 0.85
+//   "apply_rate_leader"   → value: "TU Delft", confidence: 0.78
+model AIInsight {
+  id         String   @id @default(uuid())
+  key        String   @unique // e.g. "avg_budget_RESEARCH"
+  value      String   // serialized learned value
+  confidence Float    @default(0.5) // 0.0 to 1.0
+  sampleSize Int      @default(0)   // how many events contributed
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@index([key])
+  @@map("ai_insights")
+}
+
+// Full chat conversation history per user.
+model AIChatSession {
+  id        String        @id @default(uuid())
+  userId    String?
+  messages  AIChatMessage[]
+  context   Json?         // e.g. { role: "STUDENT", currentPage: "/tasks" }
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([userId])
+  @@map("ai_chat_sessions")
+}
+
+// Individual message within a chat session.
+model AIChatMessage {
+  id        String        @id @default(uuid())
+  sessionId String
+  session   AIChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      AIChatRole
+  content   String        @db.Text
+  intent    String?       // detected intent: "TASK_SEARCH", "BUDGET_ADVICE" etc.
+  metadata  Json?         // attached task cards, suggestions, etc.
+  createdAt DateTime      @default(now())
+
+  @@index([sessionId])
+  @@map("ai_chat_messages")
+}
+
+// Precomputed TF-IDF keyword vectors for every task.
+// Updated whenever a task is created or edited.
+// Enables fast semantic similarity matching without external embeddings.
+model AITaskVector {
+  id        String   @id @default(uuid())
+  taskId    String   @unique
+  // Top 20 weighted keywords extracted from title + description + skills
+  keywords  String[] // e.g. ["market", "research", "netherlands", "ev"]
+  // TF-IDF weights stored as JSON: { "market": 0.43, "research": 0.38 }
+  tfidfJson Json
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@map("ai_task_vectors")
+}
