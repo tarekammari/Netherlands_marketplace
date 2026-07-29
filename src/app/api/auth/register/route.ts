@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
           nameEncrypted,
           role:          role as "STUDENT" | "ENTERPRISE",
           emailVerified: new Date(),
-          isVerified:    false, // Require explicit validation by Admin
+          isVerified:    true, // Activated immediately so students and enterprises can log in
         },
       });
 
@@ -122,8 +122,8 @@ export async function POST(request: NextRequest) {
 
     return created({
       success: true,
-      message: "Account registered successfully! Your account is now pending validation & approval by the Admin.",
-      pendingValidation: true,
+      message: "Account registered successfully! You can now log in.",
+      autoVerified: true,
     });
   } catch (error) {
     if (error instanceof ZodError) return validationError(error);

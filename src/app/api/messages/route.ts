@@ -37,7 +37,7 @@ async function isTaskParticipant(
 
   const task = await db.task.findUnique({
     where:   { id: taskId },
-    select:  { enterpriseId: true, applications: { where: { studentId: userId, status: "SELECTED" } } },
+    select:  { enterpriseId: true, applications: { where: { studentId: userId } } },
   });
   if (!task) return false;
 
