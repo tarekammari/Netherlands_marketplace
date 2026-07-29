@@ -50,10 +50,12 @@ const ROLE_HOME: Record<UserRole, string> = {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  const secret = process.env["AUTH_SECRET"] || process.env["NEXTAUTH_SECRET"] || "64_char_random_secret_string_for_taskbridge_nl_auth_secret_key_1234";
+
   // Read JWT from cookie — pure edge-compatible, no Prisma
   const token = await getToken({
     req:    request,
-    secret: process.env["AUTH_SECRET"] ?? "",
+    secret,
   });
 
   const isLoggedIn = Boolean(token);
