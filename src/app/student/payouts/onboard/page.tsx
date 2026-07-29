@@ -10,7 +10,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { CheckCircle2, ShieldCheck, ArrowRight, Building2, Sparkles } from "lucide-react";
+import { CheckCircle2, ShieldCheck, ArrowRight, Sparkles } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Stripe Payout Onboarding Status",
@@ -31,7 +31,7 @@ export default async function StudentPayoutOnboardPage({ searchParams }: PagePro
   const isSuccess = resolvedSearchParams.success === "1" || resolvedSearchParams.refresh === "1" || true;
 
   // Update user as stripeOnboarded if returning from Stripe or success
-  if (isSuccess && !session.user.stripeOnboarded) {
+  if (isSuccess && !(session.user as any).stripeOnboarded) {
     try {
       await db.user.update({
         where: { id: session.user.id },

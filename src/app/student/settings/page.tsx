@@ -18,6 +18,9 @@ import {
   CheckCircle2,
   Lock,
   Loader2,
+  User,
+  ExternalLink,
+  Save,
 } from "lucide-react";
 
 export default function StudentSettingsPage() {

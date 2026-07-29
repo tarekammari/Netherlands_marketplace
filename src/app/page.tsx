@@ -78,40 +78,43 @@ export default async function HomePage() {
       <div className="absolute top-[300px] left-1/4 w-96 h-96 bg-orange-100/40 rounded-full blur-3xl pointer-events-none" />
 
       {/* ── 1. HERO SECTION ── */}
-      <section className="relative z-10 pt-16 pb-16 px-4 md:px-8 max-w-7xl mx-auto text-center">
-        <div className="space-y-7">
+      <section className="relative z-10 pt-10 pb-10 sm:pt-14 sm:pb-12 lg:pt-16 lg:pb-14 px-4 md:px-8 max-w-6xl mx-auto text-center">
+        <div className="space-y-4 sm:space-y-5">
 
-          {/* Center bottom of navbar eyebrow (No background, black, small font) */}
-          <div className="text-center">
-            <span className="text-[10px] sm:text-[11px] font-mono tracking-[0.25em] uppercase font-bold text-black">
+          {/* Center bottom of navbar eyebrow */}
+          <div className="text-center pt-2 sm:pt-4 mb-1">
+            <span className="text-[8px] sm:text-[9px] md:text-[10px] font-mono tracking-[0.25em] uppercase font-bold text-neutral-500">
               DUTCH ENGINEERING &middot; THE NETHERLANDS
             </span>
           </div>
 
-          {/* Imposing Range Rover Style Headline */}
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight text-[#111827] leading-[1.02] max-w-5xl mx-auto uppercase">
-            REAL TASKS.<br />
-            <span className="bg-gradient-to-r from-orange-600 via-orange-500 to-amber-600 bg-clip-text text-transparent">
-              EXACTING STANDARDS.
-            </span><br />
-            ELITE TALENT.
+          {/* Headline — EXACTING and STANDARDS on separate lines */}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-[#0f172a] leading-[1.05] max-w-4xl mx-auto uppercase">
+            <span className="block">REAL TASKS.</span>
+            <span className="block bg-gradient-to-r from-orange-600 via-orange-500 to-amber-600 bg-clip-text text-transparent">
+              EXACTING
+            </span>
+            <span className="block bg-gradient-to-r from-orange-600 via-orange-500 to-amber-600 bg-clip-text text-transparent">
+              STANDARDS.
+            </span>
+            <span className="block">ELITE TALENT.</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-neutral-600 max-w-2xl mx-auto leading-relaxed font-normal tracking-wide">
+          <p className="text-xs sm:text-sm md:text-base text-neutral-600 max-w-xl mx-auto leading-relaxed font-normal tracking-wide">
             TaskBridge connects Netherlands enterprises with verified university students from TU Delft, UvA, TU/e, and Erasmus for high-impact deliverables. Protected by Dutch law digital contracts and Stripe escrow.
           </p>
 
-          {/* Light Luxury Orange CTAs */}
-          <div className="flex flex-wrap justify-center items-center gap-5 pt-3">
+          {/* Light Luxury Orange CTAs - Instantly Visible Above The Fold */}
+          <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 pt-1">
             <Link
               href="/register?role=enterprise"
-              className="inline-flex items-center justify-center rounded-sm bg-orange-600 px-8 py-3.5 text-xs uppercase font-bold tracking-[0.15em] text-white hover:bg-orange-700 active:scale-95 transition-all shadow-[0_4px_20px_rgba(249,115,22,0.3)]"
+              className="inline-flex items-center justify-center rounded-sm bg-orange-600 px-6 py-2.5 sm:px-7 sm:py-3 text-[11px] sm:text-xs uppercase font-bold tracking-[0.12em] text-white hover:bg-orange-700 active:scale-95 transition-all shadow-[0_4px_16px_rgba(249,115,22,0.3)]"
             >
               Post a task
             </Link>
             <Link
               href="/tasks"
-              className="inline-flex items-center justify-center rounded-sm bg-white border border-neutral-300 px-8 py-3.5 text-xs uppercase font-bold tracking-[0.15em] text-neutral-800 hover:border-orange-500 hover:text-orange-600 active:scale-95 transition-all shadow-sm"
+              className="inline-flex items-center justify-center rounded-sm bg-white border border-neutral-300 px-6 py-2.5 sm:px-7 sm:py-3 text-[11px] sm:text-xs uppercase font-bold tracking-[0.12em] text-neutral-800 hover:border-orange-500 hover:text-orange-600 active:scale-95 transition-all shadow-sm"
             >
               Browse Open Tasks &rarr;
             </Link>

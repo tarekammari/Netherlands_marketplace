@@ -203,13 +203,20 @@ export default function StudentProfilePage() {
                 {name ? name.slice(0, 1).toUpperCase() : "S"}
               </div>
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-black text-neutral-900 uppercase tracking-tight">
                     {name || "Student Profile"}
                   </h1>
-                  <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                    <CheckCircle2 size={11} /> VERIFIED STUDENT
+                  <span className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border ${
+                    isVerified ? "text-emerald-600 bg-emerald-50 border-emerald-200" : "text-amber-600 bg-amber-50 border-amber-200"
+                  }`}>
+                    <CheckCircle2 size={11} /> {isVerified ? "VERIFIED STUDENT" : "UNVERIFIED STUDENT"}
                   </span>
+                  {stripeOnboarded && (
+                    <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+                      <ShieldCheck size={11} /> PAYOUTS READY
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs sm:text-sm text-neutral-600 font-mono">
                   {email} &middot; {university}

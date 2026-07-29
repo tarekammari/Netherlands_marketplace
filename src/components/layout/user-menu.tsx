@@ -15,8 +15,8 @@ import type { UserRole } from "@prisma/client";
 interface UserMenuProps {
   user: {
     id:    string;
-    email?: string | null;
-    name?:  string | null;
+    email?: string | null | undefined;
+    name?:  string | null | undefined;
     role:   UserRole;
   };
 }

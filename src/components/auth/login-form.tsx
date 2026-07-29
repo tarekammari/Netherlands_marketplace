@@ -67,6 +67,27 @@ export function LoginForm() {
     router.refresh();
   };
 
+  const handleQuickDemo = async (email: string, password: string, defaultRedirect: string) => {
+    setAuthError(null);
+    setValue("email", email);
+    setValue("password", password);
+
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
+    if (result?.error) {
+      setAuthError(AUTH_ERRORS[result.error] ?? AUTH_ERRORS["Default"]!);
+      return;
+    }
+
+    const destination = callbackUrl !== "/" ? callbackUrl : defaultRedirect;
+    router.push(destination);
+    router.refresh();
+  };
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
@@ -147,10 +168,7 @@ export function LoginForm() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              setValue("email", "enterprise@acmecorp.nl");
-              setValue("password", "Test@1234!");
-            }}
+            onClick={() => handleQuickDemo("enterprise@acmecorp.nl", "Test@1234!", "/enterprise/dashboard")}
           >
             🏢 Enterprise
           </Button>
@@ -158,10 +176,7 @@ export function LoginForm() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              setValue("email", "student@tue.nl");
-              setValue("password", "Test@1234!");
-            }}
+            onClick={() => handleQuickDemo("student@tue.nl", "Test@1234!", "/student/dashboard")}
           >
             🎓 Student
           </Button>
@@ -169,10 +184,7 @@ export function LoginForm() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              setValue("email", "admin@taskbridge.nl");
-              setValue("password", "Admin@1234!");
-            }}
+            onClick={() => handleQuickDemo("admin@taskbridge.nl", "Admin@1234!", "/admin")}
           >
             👑 Admin
           </Button>

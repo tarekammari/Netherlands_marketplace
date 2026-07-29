@@ -19,7 +19,6 @@ import {
   XCircle,
   ChevronRight,
   ArrowLeft,
-  Calendar,
   Sparkles,
 } from "lucide-react";
 import type { ApplicationStatus } from "@prisma/client";
@@ -45,7 +44,7 @@ export default async function StudentApplicationsPage() {
     redirect("/login?callbackUrl=/student/applications");
   }
 
-  let applications: Awaited<ReturnType<typeof db.application.findMany>> = [];
+  let applications: any[] = [];
 
   try {
     applications = await db.application.findMany({
@@ -130,9 +129,9 @@ export default async function StudentApplicationsPage() {
             {applications.map((app) => {
               const task = app.task;
               const companyName = task.enterprise?.enterpriseProfile?.companyName ?? "Dutch Enterprise";
-              const status = STATUS_CONFIG[app.status] ?? STATUS_CONFIG.PENDING;
+              const status = STATUS_CONFIG[app.status as ApplicationStatus] ?? STATUS_CONFIG.PENDING;
               const StatusIcon = status.icon;
-              const categoryLabel = CATEGORY_LABELS[task.category] ?? task.category;
+              const categoryLabel = (CATEGORY_LABELS as Record<string, string>)[task.category] ?? task.category;
               const budgetDisplay = app.proposedBudgetCents ? centsToEur(app.proposedBudgetCents) : centsToEur(task.budgetCents);
 
               return (

@@ -3,8 +3,9 @@
 /**
  * src/components/layout/nav-links.tsx
  *
- * Client Component for Navbar links featuring active pathname highlighting.
- * Highlights current active route with bold Electric Orange text and bottom indicator bar.
+ * Desktop Navigation Links Component.
+ * - Displays all links directly in a single, compact, perfectly balanced horizontal bar.
+ * - Uses refined micro-typography so all items fit cleanly with generous surrounding whitespace.
  */
 
 import Link from "next/link";
@@ -18,13 +19,12 @@ export function NavLinks({ links }: NavLinksProps) {
   const pathname = usePathname();
 
   return (
-    <div className="hidden md:flex items-center gap-7">
+    <div className="hidden min-[850px]:flex items-center justify-center flex-nowrap shrink-0 whitespace-nowrap gap-1.5 min-[900px]:gap-2.5 lg:gap-4 xl:gap-5">
       {links.map(({ href, label }) => {
         const isActive = (() => {
           if (pathname === href) return true;
           if (href === "/" || href.startsWith("/#")) return false;
 
-          // If another link in navigation has an exact match with pathname, don't highlight shorter prefix links
           const hasExactMatchInLinks = links.some((l) => l.href === pathname);
           if (hasExactMatchInLinks) return false;
 
@@ -35,7 +35,7 @@ export function NavLinks({ links }: NavLinksProps) {
           <Link
             key={label}
             href={href}
-            className={`relative py-1 text-xs font-mono tracking-wider uppercase font-bold transition-all duration-200 ${
+            className={`relative py-1 text-[9px] min-[900px]:text-[10px] lg:text-[11px] xl:text-xs font-mono tracking-wide uppercase font-bold whitespace-nowrap shrink-0 transition-colors duration-200 ${
               isActive
                 ? "text-orange-600 font-black"
                 : "text-neutral-600 hover:text-orange-600"

@@ -10,7 +10,7 @@ import {
   AlertCircle,
   Plus,
   Trash,
-  Paperclip,
+
   X,
   FileText,
   Image as ImageIcon,
@@ -18,7 +18,7 @@ import {
   FileArchive,
   UploadCloud,
   Loader2,
-  CheckCircle2,
+
 } from "lucide-react";
 import { TaskCategory } from "@prisma/client";
 
@@ -65,7 +65,7 @@ export function CreateTaskForm() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<TaskCategory>("RESEARCH");
-  
+
   // Skills management state
   const [selectedSkills, setSelectedSkills] = useState<string[]>(["Market Research"]);
   const [customSkillInput, setCustomSkillInput] = useState("");
@@ -78,7 +78,7 @@ export function CreateTaskForm() {
   const [budgetEur, setBudgetEur] = useState("");
   const [deadline, setDeadline] = useState("");
   const [deliverables, setDeliverables] = useState("");
-  
+
   // Start with one default milestone
   const [milestones, setMilestones] = useState<MilestoneInput[]>([
     { title: "", description: "", dueDate: "", amountEur: "" },
@@ -103,7 +103,7 @@ export function CreateTaskForm() {
   const handleAddCustomSkill = () => {
     const trimmed = customSkillInput.trim();
     if (!trimmed) return;
-    
+
     if (selectedSkills.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
       setCustomSkillInput("");
       return;
@@ -214,7 +214,7 @@ export function CreateTaskForm() {
     const total = parseFloat(budgetEur);
     const count = milestones.length;
     const equalShare = (total / count).toFixed(2);
-    
+
     const updated = milestones.map((ms, idx) => {
       if (idx === count - 1) {
         const sumOfPrev = parseFloat(equalShare) * (count - 1);
@@ -470,11 +470,10 @@ export function CreateTaskForm() {
                             key={skill}
                             type="button"
                             onClick={() => togglePredefinedSkill(skill)}
-                            className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
-                              isSelected
+                            className={`text-xs px-2.5 py-1 rounded-full border transition-all ${isSelected
                                 ? "bg-brand-700 text-white border-brand-700 shadow-sm font-medium"
                                 : "bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50"
-                            }`}
+                              }`}
                           >
                             {isSelected ? `✓ ${skill}` : `+ ${skill}`}
                           </button>
