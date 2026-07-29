@@ -21,16 +21,25 @@ import {
   ShieldCheck,
   ArrowLeft,
   X,
-
+  Edit3,
+  Building2,
+  GraduationCap,
+  ShieldAlert,
   Save,
   Check,
   Download,
   Star,
   Activity,
   Briefcase,
-
+  AlertTriangle,
+  Clock,
+  Laptop,
+  Globe,
+  FileCheck,
   FileText,
-
+  MessageSquare,
+  TrendingUp,
+  XCircle,
 } from "lucide-react";
 
 export interface ReviewItem {
