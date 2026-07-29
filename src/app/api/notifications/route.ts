@@ -10,7 +10,7 @@ import { withAuth } from "@/lib/guards";
 import { db } from "@/lib/db";
 import { ok, serverError } from "@/lib/api-response";
 
-export const GET = withAuth(async (request, { session }) => {
+export const GET = withAuth(async (request: NextRequest, { session }) => {
   try {
     const unreadOnly = request.nextUrl.searchParams.get("unread") === "true";
 

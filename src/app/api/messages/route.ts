@@ -10,7 +10,6 @@
  *  - Admin can read any thread for dispute resolution.
  */
 
-import { type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/lib/db";

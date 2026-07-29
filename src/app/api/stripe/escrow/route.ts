@@ -12,7 +12,6 @@
  *  5. Return client_secret for Stripe Elements on the frontend.
  */
 
-import { type NextRequest } from "next/server";
 import { withEnterprise } from "@/lib/guards";
 import { db } from "@/lib/db";
 import { createEscrowPaymentIntent, upsertStripeCustomer } from "@/lib/stripe";

@@ -11,7 +11,6 @@
  *  5. Selection email sent to student with contract link.
  */
 
-import { type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { withEnterprise } from "@/lib/guards";
 import { ok, notFound, badRequest, serverError } from "@/lib/api-response";

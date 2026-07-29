@@ -4,7 +4,6 @@
  * PATCH /api/admin/users/:id — Admin user management (ban, verify, etc.)
  */
 
-import { type NextRequest } from "next/server";
 import { z } from "zod";
 import { withAdmin } from "@/lib/guards";
 import { db } from "@/lib/db";

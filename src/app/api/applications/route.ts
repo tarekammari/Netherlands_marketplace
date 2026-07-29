@@ -5,7 +5,6 @@
  * GET  /api/applications — List applications (filtered by task or student).
  */
 
-import { type NextRequest } from "next/server";
 import { ZodError } from "zod";
 
 import { db } from "@/lib/db";

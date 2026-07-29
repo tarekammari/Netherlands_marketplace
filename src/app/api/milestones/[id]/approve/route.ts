@@ -11,7 +11,6 @@
  *  4. Stripe webhook `payment_intent.succeeded` then transfers to student.
  */
 
-import { type NextRequest } from "next/server";
 import { withEnterprise } from "@/lib/guards";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
