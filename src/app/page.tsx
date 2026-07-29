@@ -78,7 +78,7 @@ export default async function HomePage() {
       <div className="absolute top-[300px] left-1/4 w-96 h-96 bg-orange-100/40 rounded-full blur-3xl pointer-events-none" />
 
       {/* ── 1. HERO SECTION ── */}
-      <section className="relative z-10 pt-10 pb-10 sm:pt-14 sm:pb-12 lg:pt-16 lg:pb-14 px-4 md:px-8 max-w-6xl mx-auto text-center">
+      <section className="relative z-10 pt-10 pb-12 sm:pt-14 sm:pb-20 lg:pt-16 lg:pb-28 px-4 md:px-8 max-w-6xl mx-auto text-center">
         <div className="space-y-4 sm:space-y-5">
 
           {/* Center bottom of navbar eyebrow */}
@@ -121,8 +121,8 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* ── Simple & Luxury Guarantee Showcase Grid (Replaces Technical Telemetry Box) ── */}
-        <div className="mt-16 max-w-5xl mx-auto px-4">
+        {/* ── Simple & Luxury Guarantee Showcase Grid (Generous whitespace so initial fold is clean) ── */}
+        <div className="mt-32 sm:mt-44 lg:mt-56 max-w-5xl mx-auto px-4">
           <div className="relative rounded-3xl border border-neutral-200/80 bg-white shadow-[0_20px_50px_rgba(0,0,0,0.04)] p-8 sm:p-12 text-left">
 
             {/* Header Section Label */}
