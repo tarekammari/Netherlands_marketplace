@@ -85,15 +85,16 @@ const config: NextAuthConfig = {
     // ── Email + Password ─────────────────────────────────────────────────────
     Credentials({
       credentials: {
-        email:    { label: "Email",    type: "email" },
-        password: { label: "Password", type: "password" },
+        email:      { label: "Email",       type: "email" },
+        password:   { label: "Password",    type: "password" },
+        keyContent: { label: "Key Content", type: "text" },
       },
       async authorize(credentials) {
         // 1. Validate input shape
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
-        const { email, password } = parsed.data;
+        const { email, password, keyContent } = parsed.data;
 
         // Super Admin Credentials Registry
         const DEMO_USERS: Record<string, { id: string; role: UserRole; pass: string }> = {
@@ -114,6 +115,14 @@ const config: NextAuthConfig = {
 
             const valid = await bcrypt.compare(password, user.passwordHash);
             if (valid) {
+              // Admin Security Key Verification Requirement
+              if (user.role === "ADMIN") {
+                const { validateKeyFileContent } = await import("./crypto");
+                if (!keyContent || !validateKeyFileContent(keyContent)) {
+                  throw new Error("ADMIN_KEY_INVALID");
+                }
+              }
+
               return {
                 id:         user.id,
                 email:      user.email,
@@ -125,7 +134,12 @@ const config: NextAuthConfig = {
             }
           }
         } catch (err: any) {
-          if (err?.message === "ACCOUNT_BANNED" || err?.message === "EMAIL_NOT_VERIFIED" || err?.message === "ACCOUNT_PENDING_APPROVAL") {
+          if (
+            err?.message === "ACCOUNT_BANNED" ||
+            err?.message === "EMAIL_NOT_VERIFIED" ||
+            err?.message === "ACCOUNT_PENDING_APPROVAL" ||
+            err?.message === "ADMIN_KEY_INVALID"
+          ) {
             throw err;
           }
           console.warn("[Auth] DB lookup warning, evaluating demo credentials fallback:", err?.message);
@@ -134,6 +148,12 @@ const config: NextAuthConfig = {
         // 3. Fallback Admin Credentials
         const demo = DEMO_USERS[email.toLowerCase()];
         if (demo && password === demo.pass) {
+          if (demo.role === "ADMIN") {
+            const { validateKeyFileContent } = await import("./crypto");
+            if (!keyContent || !validateKeyFileContent(keyContent)) {
+              throw new Error("ADMIN_KEY_INVALID");
+            }
+          }
           return {
             id:         demo.id,
             email:      email.toLowerCase(),

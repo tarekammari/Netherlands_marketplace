@@ -156,3 +156,33 @@ export function generateEncryptedKeyFile(customDir?: string): { filePath: string
   };
 }
 
+/**
+ * Validates the contents of a netherland_market_key_*.key file.
+ * Returns true if the key armor and AES-256-GCM ciphertext payload are authentic and valid.
+ */
+export function validateKeyFileContent(content: string): boolean {
+  try {
+    if (!content || !content.includes("BEGIN NETHERLAND MARKETPLACE ENCRYPTED SECURITY KEY")) {
+      return false;
+    }
+    const lines = content.split("\n").map((l) => l.trim());
+    const payloadIndex = lines.findIndex((l) => l.startsWith("CIPHERTEXT-PAYLOAD:"));
+    
+    let ciphertext = "";
+    const nextLine = lines[payloadIndex + 1];
+    if (payloadIndex !== -1 && nextLine) {
+      ciphertext = nextLine;
+    } else {
+      ciphertext = lines.find((l) => l.length > 60 && !l.startsWith("-") && !l.startsWith("SERIAL") && !l.startsWith("TIMESTAMP") && !l.startsWith("HMAC")) || "";
+    }
+
+    if (!ciphertext) return false;
+
+    const decryptedJson = decrypt(ciphertext);
+    const parsed = JSON.parse(decryptedJson);
+    return !!(parsed && parsed.serial && parsed.masterEntropy);
+  } catch {
+    return false;
+  }
+}
+

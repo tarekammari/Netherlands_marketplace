@@ -24,8 +24,9 @@ const passwordField = z
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
 export const loginSchema = z.object({
-  email:    emailField,
-  password: z.string({ required_error: "Password is required" }).min(1),
+  email:      emailField,
+  password:   z.string({ required_error: "Password is required" }).min(1),
+  keyContent: z.string().optional(),
 });
 
 export const registerStudentSchema = z.object({

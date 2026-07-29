@@ -78,31 +78,34 @@ export default async function HomePage() {
       <div className="absolute top-[300px] left-1/4 w-96 h-96 bg-orange-100/40 rounded-full blur-3xl pointer-events-none" />
 
       {/* ── 1. HERO SECTION ── */}
-      <section className="relative z-10 pt-6 pb-8 sm:pt-8 sm:pb-10 lg:pt-10 lg:pb-12 px-4 md:px-8 max-w-5xl mx-auto text-center">
-        <div className="space-y-3 sm:space-y-4">
+      <section className="relative z-10 pt-10 pb-10 sm:pt-14 sm:pb-12 lg:pt-16 lg:pb-14 px-4 md:px-8 max-w-6xl mx-auto text-center">
+        <div className="space-y-4 sm:space-y-5">
 
           {/* Center bottom of navbar eyebrow */}
-          <div className="text-center pt-1 sm:pt-2 mb-1">
+          <div className="text-center pt-2 sm:pt-4 mb-1">
             <span className="text-[8px] sm:text-[9px] md:text-[10px] font-mono tracking-[0.25em] uppercase font-bold text-neutral-500">
               DUTCH ENGINEERING &middot; THE NETHERLANDS
             </span>
           </div>
 
-          {/* Headline — Balanced 3 lines with refined luxury font sizes */}
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight text-[#0f172a] leading-[1.1] max-w-4xl mx-auto uppercase">
+          {/* Headline — EXACTING and STANDARDS on separate lines */}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-[#0f172a] leading-[1.05] max-w-4xl mx-auto uppercase">
             <span className="block">REAL TASKS.</span>
             <span className="block bg-gradient-to-r from-orange-600 via-orange-500 to-amber-600 bg-clip-text text-transparent">
-              EXACTING STANDARDS.
+              EXACTING
+            </span>
+            <span className="block bg-gradient-to-r from-orange-600 via-orange-500 to-amber-600 bg-clip-text text-transparent">
+              STANDARDS.
             </span>
             <span className="block">ELITE TALENT.</span>
           </h1>
 
-          <p className="text-xs sm:text-sm text-neutral-600 max-w-xl mx-auto leading-relaxed font-normal tracking-wide">
+          <p className="text-xs sm:text-sm md:text-base text-neutral-600 max-w-xl mx-auto leading-relaxed font-normal tracking-wide">
             TaskBridge connects Netherlands enterprises with verified university students from TU Delft, UvA, TU/e, and Erasmus for high-impact deliverables. Protected by Dutch law digital contracts and Stripe escrow.
           </p>
 
           {/* Light Luxury Orange CTAs - Instantly Visible Above The Fold */}
-          <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 pt-2">
+          <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 pt-1">
             <Link
               href="/register?role=enterprise"
               className="inline-flex items-center justify-center rounded-sm bg-orange-600 px-6 py-2.5 sm:px-7 sm:py-3 text-[11px] sm:text-xs uppercase font-bold tracking-[0.12em] text-white hover:bg-orange-700 active:scale-95 transition-all shadow-[0_4px_16px_rgba(249,115,22,0.3)]"
@@ -119,7 +122,7 @@ export default async function HomePage() {
         </div>
 
         {/* ── Simple & Luxury Guarantee Showcase Grid (Replaces Technical Telemetry Box) ── */}
-        <div className="mt-10 sm:mt-12 max-w-5xl mx-auto px-4">
+        <div className="mt-16 max-w-5xl mx-auto px-4">
           <div className="relative rounded-3xl border border-neutral-200/80 bg-white shadow-[0_20px_50px_rgba(0,0,0,0.04)] p-8 sm:p-12 text-left">
 
             {/* Header Section Label */}
