@@ -471,8 +471,8 @@ export function CreateTaskForm() {
                             type="button"
                             onClick={() => togglePredefinedSkill(skill)}
                             className={`text-xs px-2.5 py-1 rounded-full border transition-all ${isSelected
-                                ? "bg-brand-700 text-white border-brand-700 shadow-sm font-medium"
-                                : "bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50"
+                              ? "bg-brand-700 text-white border-brand-700 shadow-sm font-medium"
+                              : "bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50"
                               }`}
                           >
                             {isSelected ? `✓ ${skill}` : `+ ${skill}`}
