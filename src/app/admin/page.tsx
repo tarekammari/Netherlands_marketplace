@@ -12,6 +12,7 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import { centsToEur, timeAgo } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
+import { AdminKeyGenerator } from "@/components/admin/key-generator";
 
 export const metadata: Metadata = { title: "Admin Panel — Overview" };
 
@@ -63,14 +64,9 @@ export default async function AdminPage() {
   } catch (err: any) {
     console.warn("[AdminPage] DB server offline or unseeded, loading dev preview metrics:", err?.message);
     recentUsers = [
-      { id: "1", email: "admin@taskbridge.nl", role: "ADMIN", createdAt: new Date(Date.now() - 30 * 86400000), isVerified: true, isBanned: false },
-      { id: "2", email: "enterprise@acmecorp.nl", role: "ENTERPRISE", createdAt: new Date(Date.now() - 14 * 86400000), isVerified: true, isBanned: false },
-      { id: "3", email: "student@tue.nl", role: "STUDENT", createdAt: new Date(Date.now() - 5 * 86400000), isVerified: true, isBanned: false },
+      { id: "1", email: "tarekammari1@gmail.com", role: "ADMIN", createdAt: new Date(Date.now() - 30 * 86400000), isVerified: true, isBanned: false },
     ];
-    recentPayments = [
-      { id: "p1", totalAmountCents: 120000, status: "RELEASED", createdAt: new Date(Date.now() - 1 * 86400000), task: { title: "Brand Identity Design for SaaS Startup" } },
-      { id: "p2", totalAmountCents: 85000, status: "HELD", createdAt: new Date(Date.now() - 3 * 86400000), task: { title: "Market Research & Competitor Analysis NL" } },
-    ];
+    recentPayments = [];
   }
 
   const metrics = [
@@ -98,7 +94,7 @@ export default async function AdminPage() {
           {/* Top Primary Page Navigation Buttons */}
           <div className="flex flex-wrap items-center gap-2.5 font-mono">
             {[
-              { href: "/admin/users",    label: "👥 Manage Users" },
+              { href: "/admin/users",    label: "👥 Manage & Validate Users" },
               { href: "/admin/tasks",    label: "💼 Manage Tasks" },
               { href: "/admin/payments", label: "💳 Payments Ledger" },
               { href: "/admin/disputes", label: "⚖️ Disputes" },
@@ -113,6 +109,9 @@ export default async function AdminPage() {
             ))}
           </div>
         </div>
+
+        {/* Encrypted Security Key Generator */}
+        <AdminKeyGenerator />
 
         {/* Dispute Alert Banner */}
         {openDisputeCount > 0 && (

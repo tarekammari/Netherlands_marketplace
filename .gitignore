@@ -16,3 +16,4 @@ coverage/
 prisma/migrations/**/migration.sql
 !prisma/migrations/0001_search_and_indexes.sql
 *.tsbuildinfo
+*.key

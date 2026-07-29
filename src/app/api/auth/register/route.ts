@@ -66,7 +66,8 @@ export async function POST(request: NextRequest) {
           passwordHash,
           nameEncrypted,
           role:          role as "STUDENT" | "ENTERPRISE",
-          emailVerified: isDev ? new Date() : null, // Auto-verify in development
+          emailVerified: new Date(),
+          isVerified:    false, // Require explicit validation by Admin
         },
       });
 
@@ -117,14 +118,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    logger.info("[Register] New user created", { role, email: data.email.slice(0, 3) + "***" });
+    logger.info("[Register] New user registered", { role, email: data.email.slice(0, 3) + "***" });
 
     return created({
       success: true,
-      message: isDev
-        ? "Account created & verified automatically for development."
-        : "Account created. Please check your email to verify.",
-      autoVerified: isDev,
+      message: "Account registered successfully! Your account is now pending validation & approval by the Admin.",
+      pendingValidation: true,
     });
   } catch (error) {
     if (error instanceof ZodError) return validationError(error);

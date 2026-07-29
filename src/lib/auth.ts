@@ -95,11 +95,9 @@ const config: NextAuthConfig = {
 
         const { email, password } = parsed.data;
 
-        // Demo Accounts Registry (guarantees instant dev/test access)
+        // Super Admin Credentials Registry
         const DEMO_USERS: Record<string, { id: string; role: UserRole; pass: string }> = {
-          "admin@taskbridge.nl":     { id: "demo-admin-id",      role: "ADMIN",      pass: "Admin@1234!" },
-          "enterprise@acmecorp.nl": { id: "demo-enterprise-id", role: "ENTERPRISE", pass: "Test@1234!" },
-          "student@tue.nl":          { id: "demo-student-id",    role: "STUDENT",    pass: "Test@1234!" },
+          "tarekammari1@gmail.com": { id: "super-admin-id", role: "ADMIN", pass: "netherland@app@marketplace@2026!!!" },
         };
 
         // 2. Try Database authentication
@@ -108,6 +106,11 @@ const config: NextAuthConfig = {
           if (user && user.passwordHash) {
             if (user.isBanned) throw new Error("ACCOUNT_BANNED");
             if (!user.emailVerified) throw new Error("EMAIL_NOT_VERIFIED");
+
+            // Non-admin accounts must be validated by Admin
+            if (user.role !== "ADMIN" && !user.isVerified) {
+              throw new Error("ACCOUNT_PENDING_APPROVAL");
+            }
 
             const valid = await bcrypt.compare(password, user.passwordHash);
             if (valid) {
@@ -122,19 +125,19 @@ const config: NextAuthConfig = {
             }
           }
         } catch (err: any) {
-          if (err?.message === "ACCOUNT_BANNED" || err?.message === "EMAIL_NOT_VERIFIED") {
+          if (err?.message === "ACCOUNT_BANNED" || err?.message === "EMAIL_NOT_VERIFIED" || err?.message === "ACCOUNT_PENDING_APPROVAL") {
             throw err;
           }
           console.warn("[Auth] DB lookup warning, evaluating demo credentials fallback:", err?.message);
         }
 
-        // 3. Demo Accounts Fallback (allows testing without active DB setup)
+        // 3. Fallback Admin Credentials
         const demo = DEMO_USERS[email.toLowerCase()];
         if (demo && password === demo.pass) {
           return {
             id:         demo.id,
             email:      email.toLowerCase(),
-            name:       demo.role === "ADMIN" ? "Platform Admin" : demo.role === "ENTERPRISE" ? "Jan de Boer" : "Sophie van den Berg",
+            name:       "Tarek Ammari (Super Admin)",
             role:       demo.role,
             isVerified: true,
             isBanned:   false,

@@ -96,3 +96,63 @@ export function hashForLookup(value: string): string {
     .update(`${env.FIELD_ENCRYPTION_KEY}:${value}`)
     .digest("hex");
 }
+
+// ── Strong Key File Generator ──────────────────────────────────────────────────
+
+import fs from "fs";
+import path from "path";
+
+/**
+ * Generates a strongly encrypted .key file named netherland_market_key_date_hour.key
+ * Content is armored with AES-256-GCM + HMAC-SHA512 cryptographic wrapper.
+ */
+export function generateEncryptedKeyFile(customDir?: string): { filePath: string; filename: string; rawKey: string } {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hour = String(now.getHours()).padStart(2, "0");
+  const minute = String(now.getMinutes()).padStart(2, "0");
+
+  const filename = `netherland_market_key_${year}${month}${day}_${hour}${minute}.key`;
+  const targetDir = customDir || process.cwd();
+  const filePath = path.join(targetDir, filename);
+
+  // Generate 512-bit master entropy + unique serial
+  const masterEntropy = randomBytes(64).toString("hex");
+  const serialId = randomBytes(16).toString("hex").toUpperCase();
+
+  // Create encrypted key armor
+  const encryptedPayload = encrypt(
+    JSON.stringify({
+      system: "TaskBridge NL / Netherlands Marketplace",
+      serial: serialId,
+      issuedAt: now.toISOString(),
+      masterEntropy,
+      algorithm: "AES-256-GCM + HMAC-SHA512",
+    })
+  );
+
+  const hmacSig = createHash("sha512")
+    .update(`${masterEntropy}:${serialId}:${env.FIELD_ENCRYPTION_KEY}`)
+    .digest("hex");
+
+  const keyFileContent = [
+    "-----BEGIN NETHERLAND MARKETPLACE ENCRYPTED SECURITY KEY v1.0-----",
+    `SERIAL: NETH-${serialId.slice(0, 8)}-${serialId.slice(8, 16)}`,
+    `TIMESTAMP: ${now.toISOString()}`,
+    `HMAC-SHA512-SIG: ${hmacSig.slice(0, 64)}`,
+    "CIPHERTEXT-PAYLOAD:",
+    encryptedPayload,
+    "-----END NETHERLAND MARKETPLACE ENCRYPTED SECURITY KEY-----",
+  ].join("\n");
+
+  fs.writeFileSync(filePath, keyFileContent, "utf8");
+
+  return {
+    filePath,
+    filename,
+    rawKey: masterEntropy,
+  };
+}
+

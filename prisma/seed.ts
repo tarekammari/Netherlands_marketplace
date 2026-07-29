@@ -1,159 +1,80 @@
 /**
  * prisma/seed.ts
  *
- * Database seeder for development and testing.
- * Creates admin user, sample students, enterprises, and a few tasks.
- *
- * Run with: npx tsx prisma/seed.ts
+ * Single Admin account seed & Database Cleaner.
+ * Clears all previous test data and sets up the primary platform administrator.
+ * Automatically generates the first-use encrypted security key file.
  */
 
-import { PrismaClient, TaskCategory, TaskStatus } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { generateEncryptedKeyFile, encrypt } from "../src/lib/crypto";
 
-// Instantiate a single dedicated client for seeding
 const db = new PrismaClient();
 
-// Dynamic import of encrypt helper to avoid env loader side effects
-async function getEncrypt() {
-  const { encrypt } = await import("../src/lib/crypto");
-  return encrypt;
-}
-
 async function main() {
-  console.log("🌱 Seeding database...");
-  const encrypt = await getEncrypt();
+  console.log("🧹 Clearing all existing database records...");
 
-  // ── Admin user ─────────────────────────────────────────────────────────────
-  const adminHash = await bcrypt.hash("Admin@1234!", 12);
-  const admin = await db.user.upsert({
-    where:  { email: "admin@taskbridge.nl" },
-    update: {},
-    create: {
-      email:          "admin@taskbridge.nl",
-      passwordHash:   adminHash,
-      nameEncrypted:  encrypt("Platform Admin"),
-      role:           "ADMIN",
-      emailVerified:  new Date(),
-      isVerified:     true,
+  // Delete records in order of relational dependencies
+  await db.aIChatMessage.deleteMany();
+  await db.aIChatSession.deleteMany();
+  await db.aITaskVector.deleteMany();
+  await db.aIInsight.deleteMany();
+  await db.aIEvent.deleteMany();
+  await db.auditLog.deleteMany();
+  await db.notification.deleteMany();
+  await db.review.deleteMany();
+  await db.message.deleteMany();
+  await db.payment.deleteMany();
+  await db.contract.deleteMany();
+  await db.milestone.deleteMany();
+  await db.application.deleteMany();
+  await db.task.deleteMany();
+  await db.account.deleteMany();
+  await db.session.deleteMany();
+  await db.verificationToken.deleteMany();
+  await db.studentProfile.deleteMany();
+  await db.enterpriseProfile.deleteMany();
+  await db.user.deleteMany();
+
+  console.log("✨ Database completely wiped.");
+
+  // ── Create Primary Super Admin ──────────────────────────────────────────────
+  const adminEmail = "tarekammari1@gmail.com";
+  const adminPassword = "netherland@app@marketplace@2026!!!";
+
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
+  const nameEncrypted = encrypt("Tarek Ammari (Super Admin)");
+
+  const admin = await db.user.create({
+    data: {
+      email: adminEmail,
+      passwordHash,
+      nameEncrypted,
+      role: "ADMIN",
+      emailVerified: new Date(),
+      isVerified: true,
+      isBanned: false,
     },
   });
-  console.log("✅ Admin:", admin.email);
 
-  // ── Sample enterprise ──────────────────────────────────────────────────────
-  const entHash = await bcrypt.hash("Test@1234!", 12);
-  const enterprise = await db.user.upsert({
-    where:  { email: "enterprise@acmecorp.nl" },
-    update: {},
-    create: {
-      email:          "enterprise@acmecorp.nl",
-      passwordHash:   entHash,
-      nameEncrypted:  encrypt("Jan de Boer"),
-      role:           "ENTERPRISE",
-      emailVerified:  new Date(),
-      isVerified:     true,
-      enterpriseProfile: {
-        create: {
-          companyName:          "Acme Corp NL",
-          kvkNumberEncrypted:   encrypt("12345678"),
-          industry:             "Technology",
-          companySize:          "11-50",
-          description:         "Dutch tech company building innovative solutions.",
-        },
-      },
-    },
-  });
-  console.log("✅ Enterprise:", enterprise.email);
+  console.log("👑 Primary Super Admin created successfully:");
+  console.log(`   Email:    ${admin.email}`);
+  console.log(`   Role:     ${admin.role}`);
+  console.log(`   Verified: ${admin.isVerified}`);
 
-  // ── Sample student ──────────────────────────────────────────────────────────
-  const stuHash = await bcrypt.hash("Test@1234!", 12);
-  const student = await db.user.upsert({
-    where:  { email: "student@tue.nl" },
-    update: {},
-    create: {
-      email:          "student@tue.nl",
-      passwordHash:   stuHash,
-      nameEncrypted:  encrypt("Sophie van den Berg"),
-      role:           "STUDENT",
-      emailVerified:  new Date(),
-      isVerified:     true,
-      studentProfile: {
-        create: {
-          university:   "Eindhoven University of Technology",
-          studyField:   "Industrial Design",
-          yearOfStudy:  3,
-          skills:       ["UI/UX Design", "Figma", "Research", "Prototyping"],
-          bio:          "Third-year Industrial Design student passionate about human-centered design.",
-        },
-      },
-    },
-  });
-  console.log("✅ Student:", student.email);
+  // ── First-Use Encrypted Key File Generation ─────────────────────────────────
+  console.log("🔑 Generating first-use encrypted security key file...");
+  const keyInfo = generateEncryptedKeyFile();
+  console.log(`✅ Key file generated at: ${keyInfo.filePath}`);
+  console.log(`   Filename: ${keyInfo.filename}`);
 
-  // ── Sample tasks ───────────────────────────────────────────────────────────
-  const tasks = [
-    {
-      title:         "Brand Identity Design for SaaS Startup",
-      description:   "We are a B2B SaaS startup looking for a talented design student to create our complete brand identity. This includes logo, colour palette, typography, and brand guidelines document. We want a modern, minimal aesthetic that conveys trust and innovation.",
-      category:      TaskCategory.DESIGN,
-      skillsRequired:["Figma", "Brand Design", "Adobe Illustrator", "Typography"],
-      budgetCents:   120000,  // €1,200
-      deadline:      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      deliverables:  "Logo files (SVG, PNG), brand guidelines PDF, colour palette, font specifications",
-      status:        TaskStatus.OPEN,
-      milestones: [
-        { title: "Research & Mood Board", description: "Present 3 mood board directions", amountCents: 30000, sortOrder: 0 },
-        { title: "Logo Design", description: "Deliver final logo in all formats", amountCents: 50000, sortOrder: 1 },
-        { title: "Brand Guidelines", description: "Complete brand guidelines document", amountCents: 40000, sortOrder: 2 },
-      ],
-    },
-    {
-      title:         "Market Research: EV Adoption in the Netherlands",
-      description:   "Research project to analyse electric vehicle adoption trends among Dutch consumers aged 25-45. We need a comprehensive report with survey data, competitor analysis, and actionable recommendations for our marketing strategy.",
-      category:      TaskCategory.RESEARCH,
-      skillsRequired:["Market Research", "Survey Design", "Data Analysis", "PowerPoint"],
-      budgetCents:   80000, // €800
-      deadline:      new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
-      deliverables:  "Research report (PDF), survey data (Excel), presentation slides (PPT)",
-      status:        TaskStatus.OPEN,
-      milestones: [
-        { title: "Research Plan", description: "Survey design and methodology", amountCents: 20000, sortOrder: 0 },
-        { title: "Data Collection", description: "Survey conducted, raw data delivered", amountCents: 30000, sortOrder: 1 },
-        { title: "Final Report", description: "Complete analysis and recommendations", amountCents: 30000, sortOrder: 2 },
-      ],
-    },
-  ];
-
-  for (const taskData of tasks) {
-    const { milestones, ...rest } = taskData;
-    const slug = rest.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-seed";
-
-    const existing = await db.task.findFirst({ where: { enterpriseId: enterprise.id, title: rest.title } });
-    if (!existing) {
-      await db.task.create({
-        data: {
-          ...rest,
-          enterpriseId: enterprise.id,
-          slug,
-          currency:     "EUR",
-          milestones: {
-            create: milestones.map((m) => ({
-              ...m,
-              dueDateDate: new Date(Date.now() + (m.sortOrder + 1) * 7 * 24 * 60 * 60 * 1000),
-            })),
-          },
-        },
-      });
-      console.log("✅ Task:", rest.title);
-    }
-  }
-
-  console.log("\n✨ Seeding complete!");
-  console.log("\nTest credentials:");
-  console.log("  Admin:      admin@taskbridge.nl  / Admin@1234!");
-  console.log("  Enterprise: enterprise@acmecorp.nl / Test@1234!");
-  console.log("  Student:    student@tue.nl / Test@1234!");
+  console.log("\n🎉 Database setup & first-use security key generation complete!");
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
+  .catch((e) => {
+    console.error("❌ Seeding error:", e);
+    process.exit(1);
+  })
   .finally(() => db.$disconnect());
