@@ -1,7 +1,7 @@
 /**
  * src/app/admin/page.tsx
  *
- * Admin panel overview — shows platform-wide metrics.
+ * Admin panel overview — shows real platform-wide metrics directly from database.
  * Protected by middleware (ADMIN role required).
  */
 
@@ -14,18 +14,21 @@ import { centsToEur, timeAgo } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
 import { AdminKeyGenerator } from "@/components/admin/key-generator";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = { title: "Admin Panel — Overview" };
 
 export default async function AdminPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") redirect("/login?callbackUrl=/admin");
 
-  let userCount = 142;
-  let taskCount = 32;
+  let userCount = 0;
+  let taskCount = 0;
   let openDisputeCount = 0;
   let recentPayments: any[] = [];
   let recentUsers: any[] = [];
-  let totalRevenueCents = 450000;
+  let totalRevenueCents = 0;
 
   try {
     const [
@@ -41,17 +44,17 @@ export default async function AdminPage() {
       db.task.count({ where: { status: "DISPUTED" } }),
       db.payment.findMany({
         orderBy: { createdAt: "desc" },
-        take:    8,
+        take: 8,
         include: { task: { select: { title: true } } },
       }),
       db.user.findMany({
         orderBy: { createdAt: "desc" },
-        take:    8,
-        select:  { id: true, email: true, role: true, createdAt: true, isVerified: true, isBanned: true },
+        take: 8,
+        select: { id: true, email: true, role: true, createdAt: true, isVerified: true, isBanned: true },
       }),
       db.payment.aggregate({
         where: { status: "RELEASED" },
-        _sum:  { platformFeeCents: true },
+        _sum: { platformFeeCents: true },
       }),
     ]);
 
@@ -62,17 +65,13 @@ export default async function AdminPage() {
     recentUsers = users;
     totalRevenueCents = revenue._sum.platformFeeCents ?? 0;
   } catch (err: any) {
-    console.warn("[AdminPage] DB server offline or unseeded, loading dev preview metrics:", err?.message);
-    recentUsers = [
-      { id: "1", email: "tarekammari1@gmail.com", role: "ADMIN", createdAt: new Date(Date.now() - 30 * 86400000), isVerified: true, isBanned: false },
-    ];
-    recentPayments = [];
+    console.error("[AdminPage] DB query error:", err?.message);
   }
 
   const metrics = [
-    { label: "Total users",      value: userCount.toString(),      color: "text-[#111827]" },
-    { label: "Total tasks",      value: taskCount.toString(),       color: "text-orange-600" },
-    { label: "Open disputes",    value: openDisputeCount.toString(),color: "text-red-600" },
+    { label: "Total users",      value: userCount.toLocaleString(), color: "text-[#111827]" },
+    { label: "Total tasks",      value: taskCount.toLocaleString(), color: "text-orange-600" },
+    { label: "Open disputes",    value: openDisputeCount.toString(), color: "text-red-600" },
     { label: "Platform revenue", value: centsToEur(totalRevenueCents), color: "text-emerald-600" },
   ];
 
@@ -155,22 +154,26 @@ export default async function AdminPage() {
               </Link>
             </div>
             <div className="p-5 divide-y divide-neutral-100 font-mono text-xs">
-              {recentPayments.map((p) => (
-                <div key={p.id} className="py-3 flex items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-neutral-900 truncate">{p.task?.title ?? "Task Brief"}</p>
-                    <p className="text-[10px] text-neutral-400">{timeAgo(p.createdAt)}</p>
+              {recentPayments.length > 0 ? (
+                recentPayments.map((p) => (
+                  <div key={p.id} className="py-3 flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-neutral-900 truncate">{p.task?.title ?? "Task Brief"}</p>
+                      <p className="text-[10px] text-neutral-400">{timeAgo(p.createdAt)}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-black text-neutral-900">{centsToEur(p.totalAmountCents)}</p>
+                      <span className={`inline-block mt-0.5 text-[9px] font-bold uppercase px-2 py-0.5 rounded ${
+                        p.status === "RELEASED" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                      }`}>
+                        {p.status}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="font-black text-neutral-900">{centsToEur(p.totalAmountCents)}</p>
-                    <span className={`inline-block mt-0.5 text-[9px] font-bold uppercase px-2 py-0.5 rounded ${
-                      p.status === "RELEASED" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
-                    }`}>
-                      {p.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-xs text-neutral-400 py-4 text-center">No transactions recorded yet.</p>
+              )}
             </div>
           </div>
 
@@ -185,21 +188,25 @@ export default async function AdminPage() {
               </Link>
             </div>
             <div className="p-5 divide-y divide-neutral-100 font-mono text-xs">
-              {recentUsers.map((u) => (
-                <div key={u.id} className="py-3 flex items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-neutral-900 truncate">{u.email}</p>
-                    <p className="text-[10px] text-neutral-400">{timeAgo(u.createdAt)}</p>
+              {recentUsers.length > 0 ? (
+                recentUsers.map((u) => (
+                  <div key={u.id} className="py-3 flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-neutral-900 truncate">{u.email}</p>
+                      <p className="text-[10px] text-neutral-400">{timeAgo(u.createdAt)}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${
+                        u.role === "ADMIN" ? "bg-purple-100 text-purple-800" : u.role === "ENTERPRISE" ? "bg-blue-100 text-blue-800" : "bg-emerald-100 text-emerald-800"
+                      }`}>
+                        {u.role}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${
-                      u.role === "ADMIN" ? "bg-purple-100 text-purple-800" : u.role === "ENTERPRISE" ? "bg-blue-100 text-blue-800" : "bg-emerald-100 text-emerald-800"
-                    }`}>
-                      {u.role}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-xs text-neutral-400 py-4 text-center">No user accounts found.</p>
+              )}
             </div>
           </div>
 

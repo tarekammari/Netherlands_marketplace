@@ -2,7 +2,7 @@
  * src/app/tasks/page.tsx
  *
  * Public Task Roster Listing Page — Range Rover / Apple Series Ultra-Luxury Design.
- * Features full-text search, category filter sidebar, server-rendered task grid, and pagination.
+ * Renders real database tasks directly from Neon database.
  */
 
 import type { Metadata } from "next";
@@ -12,6 +12,9 @@ import { taskSearchSchema } from "@/lib/validations/task";
 import { TaskFilters } from "@/components/tasks/task-filters";
 import type { Prisma } from "@prisma/client";
 import { SearchX, ChevronLeft, ChevronRight } from "lucide-react";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title:       "Browse Tasks & Briefs",
@@ -81,73 +84,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
     tasks = res[0];
     total = res[1];
   } catch (err) {
-    console.warn("[TasksPage] DB fetch failed, loading dev preview tasks:", err);
-  }
-
-  if (tasks.length === 0) {
-    tasks = [
-      {
-        id: "t-1",
-        title: "Brand Identity Design for SaaS Startup",
-        slug: "brand-identity-design-saas",
-        description: "We are a B2B SaaS startup looking for a talented design student to create our complete brand identity.",
-        category: "DESIGN",
-        skillsRequired: ["Figma", "Brand Design", "Adobe Illustrator", "Typography"],
-        budgetCents: 120000,
-        currency: "EUR",
-        deadline: new Date(Date.now() + 30 * 86400000),
-        deliverables: "Vector logo files and PDF brand guidelines.",
-        status: "OPEN",
-        searchVector: null,
-        viewCount: 142,
-        createdAt: new Date(Date.now() - 2 * 86400000),
-        updatedAt: new Date(Date.now() - 2 * 86400000),
-        enterpriseId: "ent-1",
-        enterprise: { enterpriseProfile: { companyName: "Acme Corp NL", logoUrl: null } },
-        _count: { applications: 5 },
-      },
-      {
-        id: "t-2",
-        title: "Market Research & Competitor Analysis NL",
-        slug: "market-research-nl",
-        description: "Conduct comprehensive market research on EV charging infrastructure in the Netherlands.",
-        category: "RESEARCH",
-        skillsRequired: ["Market Research", "Data Analysis", "Dutch"],
-        budgetCents: 85000,
-        currency: "EUR",
-        deadline: new Date(Date.now() + 14 * 86400000),
-        deliverables: "Comprehensive 20-page research report.",
-        status: "OPEN",
-        searchVector: null,
-        viewCount: 98,
-        createdAt: new Date(Date.now() - 5 * 86400000),
-        updatedAt: new Date(Date.now() - 5 * 86400000),
-        enterpriseId: "ent-2",
-        enterprise: { enterpriseProfile: { companyName: "Dutch Ventures", logoUrl: null } },
-        _count: { applications: 3 },
-      },
-      {
-        id: "t-3",
-        title: "Python Data Pipeline & ETL Automation",
-        slug: "python-data-pipeline",
-        description: "Build an automated ETL pipeline using Python, PostgreSQL, and Apache Airflow.",
-        category: "DEVELOPMENT",
-        skillsRequired: ["Python", "PostgreSQL", "ETL", "Docker"],
-        budgetCents: 150000,
-        currency: "EUR",
-        deadline: new Date(Date.now() + 21 * 86400000),
-        deliverables: "Tested Python codebase with Docker setup.",
-        status: "OPEN",
-        searchVector: null,
-        viewCount: 210,
-        createdAt: new Date(Date.now() - 10 * 86400000),
-        updatedAt: new Date(Date.now() - 10 * 86400000),
-        enterpriseId: "ent-3",
-        enterprise: { enterpriseProfile: { companyName: "Amsterdam AI", logoUrl: null } },
-        _count: { applications: 8 },
-      },
-    ];
-    total = tasks.length;
+    console.error("[TasksPage] DB fetch error:", err);
   }
 
   const totalPages = Math.ceil(total / limit);
@@ -156,7 +93,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
     <div className="min-h-screen bg-[#fafafb] text-neutral-900 py-12 md:py-16">
       <div className="max-w-6xl mx-auto px-4 md:px-8">
         
-        {/* Centered Luxury Header matching Homepage Section 5 */}
+        {/* Centered Luxury Header */}
         <div className="mb-14 text-center">
           <div className="text-[11px] font-mono tracking-[0.3em] uppercase font-bold text-orange-600 mb-2.5">
             ACADEMIC TASK ROSTER
