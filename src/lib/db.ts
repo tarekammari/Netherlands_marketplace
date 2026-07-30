@@ -15,19 +15,17 @@ declare global {
 }
 
 function createPrismaClient(): PrismaClient {
-  let dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
+  // Use pooled DATABASE_URL for runtime queries to handle Neon compute auto-suspend
+  let dbUrl = process.env.DATABASE_URL || process.env.DIRECT_URL || "";
 
   // Ensure Neon PgBouncer parameters are active for serverless connection pooler
-  if (dbUrl && dbUrl.includes("-pooler.") && !dbUrl.includes("pgbouncer=true")) {
-    dbUrl += (dbUrl.includes("?") ? "&" : "?") + "pgbouncer=true&connect_timeout=30";
+  if (dbUrl && !dbUrl.includes("pgbouncer=true")) {
+    dbUrl += (dbUrl.includes("?") ? "&" : "?") + "pgbouncer=true&connect_timeout=30&pool_timeout=10&connection_limit=5";
   }
 
   const options: Record<string, unknown> = {
-    log:
-      env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
-    errorFormat: "pretty",
+    log: [],
+    errorFormat: "minimal",
   };
 
   if (dbUrl) {

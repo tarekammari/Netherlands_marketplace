@@ -12,7 +12,7 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import { centsToEur, timeAgo } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
-import { AdminKeyGenerator } from "@/components/admin/key-generator";
+import { AdminKeyGeneratorButton } from "@/components/admin/key-generator-modal";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -80,7 +80,7 @@ export default async function AdminPage() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* Page Header & Top Navigation Button Bar */}
-        <div className="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-neutral-200 pb-6">
+        <div className="mb-8 flex flex-col xl:flex-row xl:items-center justify-between gap-6 border-b border-neutral-200 pb-6">
           <div>
             <div className="text-[11px] font-mono tracking-[0.25em] uppercase font-bold text-orange-600 mb-1">
               PLATFORM OVERVIEW & CONTROL CENTER
@@ -90,13 +90,17 @@ export default async function AdminPage() {
             </h1>
           </div>
 
-          {/* Top Primary Page Navigation Buttons */}
+          {/* Top Primary Page Navigation Buttons & Key Generator */}
           <div className="flex flex-wrap items-center gap-2.5 font-mono">
+            {/* 🔑 EMPHASIZED SECURITY KEY GENERATOR BUTTON */}
+            <AdminKeyGeneratorButton />
+
             {[
-              { href: "/admin/users",    label: "👥 Manage & Validate Users" },
+              { href: "/admin/users",    label: "👥 Manage Users" },
               { href: "/admin/tasks",    label: "💼 Manage Tasks" },
-              { href: "/admin/payments", label: "💳 Payments Ledger" },
+              { href: "/admin/payments", label: "💳 Payments" },
               { href: "/admin/disputes", label: "⚖️ Disputes" },
+              { href: "/admin/settings", label: "⚙️ System Settings" },
             ].map(({ href, label }) => (
               <Link
                 key={href}
@@ -108,9 +112,6 @@ export default async function AdminPage() {
             ))}
           </div>
         </div>
-
-        {/* Encrypted Security Key Generator */}
-        <AdminKeyGenerator />
 
         {/* Dispute Alert Banner */}
         {openDisputeCount > 0 && (

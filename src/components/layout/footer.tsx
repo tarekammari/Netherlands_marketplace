@@ -87,9 +87,12 @@ export function Footer() {
             <ul className="space-y-2.5" style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {[
                 { label: "Browse Open Tasks", href: "/tasks" },
+                { label: "About Us", href: "/about" },
+                { label: "Pricing & Fees", href: "/pricing" },
+                { label: "FAQ & Help Center", href: "/faq" },
+                { label: "Contact & Support Desk", href: "/contact" },
                 { label: "For Student Talent", href: "/register?role=student" },
                 { label: "For Enterprise Clients", href: "/register?role=enterprise" },
-                { label: "How It Works", href: "/#how-it-works" },
                 { label: "Account Log In", href: "/login" },
               ].map((item) => (
                 <li key={item.label}>
@@ -199,7 +202,7 @@ export function Footer() {
             <Link href="/terms" style={{ color: "#6b7280", textDecoration: "none" }} className="hover:text-orange-600">
               Terms of Service
             </Link>
-            <Link href="/support" style={{ color: "#6b7280", textDecoration: "none" }} className="hover:text-orange-600">
+            <Link href="/contact" style={{ color: "#6b7280", textDecoration: "none" }} className="hover:text-orange-600">
               Support
             </Link>
           </div>

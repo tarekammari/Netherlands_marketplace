@@ -8,7 +8,33 @@
 
 import { PrismaClient, TaskCategory, TaskStatus, UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import fs from "fs";
+import path from "path";
 import { generateEncryptedKeyFile, encrypt } from "../src/lib/crypto";
+
+// Auto-load .env.local or .env if process.env.DATABASE_URL is missing
+if (!process.env.DATABASE_URL || !process.env.DIRECT_URL) {
+  const targetEnv = fs.existsSync(path.resolve(".env.local")) ? ".env.local" : ".env";
+  if (fs.existsSync(path.resolve(targetEnv))) {
+    const envLines = fs.readFileSync(path.resolve(targetEnv), "utf-8").split("\n");
+    for (const line of envLines) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith("#")) {
+        const eqIdx = trimmed.indexOf("=");
+        if (eqIdx !== -1) {
+          const key = trimmed.slice(0, eqIdx).trim();
+          let val = trimmed.slice(eqIdx + 1).trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          if (!process.env[key]) {
+            process.env[key] = val;
+          }
+        }
+      }
+    }
+  }
+}
 
 // Use DIRECT_URL for direct connection to Neon without pooler timeouts
 const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
@@ -154,6 +180,8 @@ async function main() {
       passwordHash: adminPasswordHash,
       nameEncrypted: encrypt("Tarek Ammari (Super Admin)"),
       role: UserRole.ADMIN,
+      avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+      avatarThumbnailUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=96&q=70",
       emailVerified: new Date(),
       isVerified: true,
     },
@@ -169,6 +197,19 @@ async function main() {
   const studentUsers: any[] = [];
   const studentProfiles: any[] = [];
 
+  const AVATAR_PHOTOS = [
+    "https://images.unsplash.com/photo-1534528741775-53994a69daeb",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
+    "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
+    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e",
+    "https://images.unsplash.com/photo-1517841905240-472988babdf9",
+    "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6",
+    "https://images.unsplash.com/photo-1524504388940-b1c1722653e1",
+    "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61",
+    "https://images.unsplash.com/photo-1544005313-94ddf0286df2",
+    "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d",
+  ];
+
   for (let i = 1; i <= 1000; i++) {
     const fn = DUTCH_FIRST_NAMES[i % DUTCH_FIRST_NAMES.length] || "Lars";
     const ln = DUTCH_LAST_NAMES[i % DUTCH_LAST_NAMES.length] || "de Vries";
@@ -177,6 +218,7 @@ async function main() {
     const domain = uni.includes("TU Delft") ? "tudelft.nl" : uni.includes("UvA") ? "uva.nl" : uni.includes("TU/e") ? "tue.nl" : "eur.nl";
     const email = `student.${i}.${fn.toLowerCase()}.${ln.toLowerCase().replace(/\s+/g, "")}@${domain}`;
     const userId = `student-user-uuid-${i}`;
+    const photoBase = AVATAR_PHOTOS[i % AVATAR_PHOTOS.length];
 
     studentUsers.push({
       id: userId,
@@ -184,6 +226,8 @@ async function main() {
       passwordHash: defaultPasswordHash,
       nameEncrypted: encrypt(fullName),
       role: UserRole.STUDENT,
+      avatarUrl: `${photoBase}?auto=format&fit=crop&w=256&q=80`,
+      avatarThumbnailUrl: `${photoBase}?auto=format&fit=crop&w=96&q=70`,
       emailVerified: new Date(),
       isVerified: true,
     });
@@ -223,12 +267,16 @@ async function main() {
     const email = `contact@${company.name.toLowerCase().replace(/[^a-z0-9]+/g, "")}${i}.nl`;
     const userId = `enterprise-user-uuid-${i + 1}`;
 
+    const photoBase = AVATAR_PHOTOS[i % AVATAR_PHOTOS.length];
+
     enterpriseUsers.push({
       id: userId,
       email,
       passwordHash: defaultPasswordHash,
       nameEncrypted: encrypt(`Director ${company.name}`),
       role: UserRole.ENTERPRISE,
+      avatarUrl: `${photoBase}?auto=format&fit=crop&w=256&q=80`,
+      avatarThumbnailUrl: `${photoBase}?auto=format&fit=crop&w=96&q=70`,
       emailVerified: new Date(),
       isVerified: true,
     });

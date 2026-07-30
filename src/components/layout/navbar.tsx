@@ -26,18 +26,26 @@ const NAV_LINKS: Record<UserRole, Array<{ href: string; label: string }>> = {
     { href: "/enterprise/dashboard", label: "Dashboard" },
   ],
   ADMIN: [
-    { href: "/admin",                label: "Admin Panel" },
+    { href: "/admin",          label: "Overview" },
+    { href: "/admin/users",    label: "Users" },
+    { href: "/admin/tasks",    label: "Tasks" },
+    { href: "/admin/payments", label: "Payments" },
+    { href: "/admin/disputes", label: "Disputes" },
+    { href: "/admin/settings", label: "Settings" },
+    { href: "/about",          label: "About Us" },
+    { href: "/pricing",        label: "Pricing" },
+    { href: "/faq",            label: "FAQ" },
+    { href: "/contact",        label: "Contact" },
   ],
 };
 
 // Public nav links
 const PUBLIC_NAV_LINKS = [
-  { href: "/tasks",                 label: "Browse tasks" },
-  { href: "/register?role=student", label: "Find Talent" },
-  { href: "/#how-it-works",         label: "About us" },
-  { href: "/#how-it-works",         label: "Pricing" },
-  { href: "/#how-it-works",         label: "FAQ" },
-  { href: "/support",               label: "Contact" },
+  { href: "/tasks",   label: "Browse tasks" },
+  { href: "/about",   label: "About Us" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/faq",     label: "FAQ" },
+  { href: "/contact", label: "Contact" },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────

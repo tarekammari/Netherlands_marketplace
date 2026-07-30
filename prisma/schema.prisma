@@ -131,7 +131,8 @@ model User {
   role            UserRole  @default(STUDENT)
   // Encrypted PII fields (AES-256, see lib/crypto.ts)
   nameEncrypted   String
-  avatarUrl       String?
+  avatarUrl          String?
+  avatarThumbnailUrl String?  // Lightweight compressed thumbnail for fast app performance
   isVerified      Boolean   @default(false)  // KYC / admin verification
   isBanned        Boolean   @default(false)
   banReason       String?
@@ -562,4 +563,15 @@ model AITaskVector {
   createdAt DateTime @default(now())
 
   @@map("ai_task_vectors")
+}
+
+// ─── System Configuration & Settings (Managed by Admin) ──────────────────────
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique // e.g. "SYSTEM_EMAIL", "ABOUT_HERO_IMAGE", "CONTACT_HQ_IMAGE", "PRICING_HERO_IMAGE"
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@map("system_settings")
 }

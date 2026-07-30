@@ -127,6 +127,7 @@ const config: NextAuthConfig = {
                 id:         user.id,
                 email:      user.email,
                 name:       null,
+                image:      user.avatarThumbnailUrl || user.avatarUrl,
                 role:       user.role,
                 isVerified: user.isVerified,
                 isBanned:   user.isBanned,
@@ -158,6 +159,7 @@ const config: NextAuthConfig = {
             id:         demo.id,
             email:      email.toLowerCase(),
             name:       "Tarek Ammari (Super Admin)",
+            image:      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
             role:       demo.role,
             isVerified: true,
             isBanned:   false,
@@ -186,6 +188,7 @@ const config: NextAuthConfig = {
       if (user) {
         token.id         = user.id!;
         token.role       = user.role;
+        token.picture    = user.image ?? null;
         token.isVerified = user.isVerified;
         token.isBanned   = user.isBanned;
       }
@@ -196,6 +199,7 @@ const config: NextAuthConfig = {
     async session({ session, token }) {
       session.user.id         = token.id;
       session.user.role       = token.role;
+      session.user.image      = (token.picture as string | null) ?? null;
       session.user.isVerified = token.isVerified;
       session.user.isBanned   = token.isBanned;
       return session;

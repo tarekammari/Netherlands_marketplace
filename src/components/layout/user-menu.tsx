@@ -18,6 +18,7 @@ interface UserMenuProps {
     email?: string | null | undefined;
     name?:  string | null | undefined;
     role:   UserRole;
+    image?: string | null | undefined;
   };
 }
 
@@ -50,8 +51,12 @@ export function UserMenu({ user }: UserMenuProps) {
         aria-label="User menu"
       >
         {/* Avatar */}
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-700 text-white text-xs font-semibold">
-          {initials}
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-900 text-white text-xs font-semibold overflow-hidden shrink-0">
+          {user.image ? (
+            <img src={user.image} alt={user.name ?? user.email ?? "User"} className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
         </span>
         <span className="hidden sm:block max-w-[120px] truncate font-medium">
           {user.name ?? user.email}

@@ -65,6 +65,8 @@ export interface UserItem {
   id: string;
   email: string;
   role: "STUDENT" | "ENTERPRISE" | "ADMIN";
+  avatarUrl?: string | null | undefined;
+  avatarThumbnailUrl?: string | null | undefined;
   isVerified: boolean;
   isBanned: boolean;
   createdAt: Date | string;
@@ -371,8 +373,12 @@ export function UsersManagerClient({ initialUsers }: UsersManagerProps) {
                   >
                     <td className="py-4 px-5">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-orange-100 border border-orange-200 text-orange-600 flex items-center justify-center font-black text-xs uppercase shadow-sm">
-                          {u.email[0]}
+                        <div className="w-9 h-9 rounded-full bg-orange-100 border border-orange-200 text-orange-600 flex items-center justify-center font-black text-xs uppercase shadow-sm overflow-hidden shrink-0">
+                          {u.avatarThumbnailUrl || u.avatarUrl ? (
+                            <img src={u.avatarThumbnailUrl || u.avatarUrl!} alt={u.email} className="w-full h-full object-cover" />
+                          ) : (
+                            u.email[0]
+                          )}
                         </div>
                         <div>
                           <p className="font-bold text-neutral-900 group-hover:text-orange-600 transition-colors">
@@ -473,8 +479,12 @@ export function UsersManagerClient({ initialUsers }: UsersManagerProps) {
               {/* Top Row: User Avatar, Email, Role, Close Button */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-orange-600 text-white flex items-center justify-center font-black text-sm uppercase shadow-md">
-                    {inspectUser.email[0]}
+                  <div className="w-10 h-10 rounded-full bg-orange-600 text-white flex items-center justify-center font-black text-sm uppercase shadow-md overflow-hidden shrink-0 border-2 border-white">
+                    {inspectUser.avatarThumbnailUrl || inspectUser.avatarUrl ? (
+                      <img src={inspectUser.avatarThumbnailUrl || inspectUser.avatarUrl!} alt={inspectUser.email} className="w-full h-full object-cover" />
+                    ) : (
+                      inspectUser.email[0]
+                    )}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
