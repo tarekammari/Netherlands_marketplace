@@ -1,40 +1,79 @@
 /**
  * src/app/api/hero-image/route.ts
- * Serves the Netherlands hero visual directly from the workspace root.
- * Also copies it into the public folder for static caching.
+ *
+ * Serves the Netherlands hero visual cleanly with zero DB pool blocking.
+ * Serves static assets instantly from disk and falls back to Cloud PostgreSQL if needed.
  */
 
 import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
 import fs from "fs";
 import path from "path";
 
+const KEY = "HERO_IMAGE";
+const PUBLIC_FILE = "hero-netherlands.png";
+const ARTIFACT_PREFIX = "hero_netherlands_visual";
+const ARTIFACTS_DIR = "C:\\Users\\TAREK\\.gemini\\antigravity-ide\\brain\\cb84f133-6884-4b18-8b64-3df56c2921e2";
+
 export async function GET() {
-  try {
-    const srcPath = path.join(process.cwd(), "netherlands_hero_visual_1785126740232.png");
-    const publicPath = path.join(process.cwd(), "public", "hero-netherlands.png");
+  const publicPath = path.join(process.cwd(), "public", PUBLIC_FILE);
 
-    if (fs.existsSync(srcPath)) {
-      // Best-effort copy to public/ folder
-      try {
-        if (!fs.existsSync(publicPath)) {
-          fs.copyFileSync(srcPath, publicPath);
-        }
-      } catch (copyErr) {
-        console.warn("Auto-copy to public failed, serving buffer directly:", copyErr);
-      }
-
-      const fileBuffer = fs.readFileSync(srcPath);
-      return new NextResponse(fileBuffer, {
-        headers: {
-          "Content-Type": "image/png",
-          "Cache-Control": "public, max-age=31536000, immutable",
-        },
-      });
-    }
-
-    return new NextResponse("Hero visual image not found", { status: 404 });
-  } catch (error) {
-    console.error("Error serving hero image:", error);
-    return new NextResponse("Error serving hero image", { status: 500 });
+  // 1. Instant static file serve (0ms DB pool overhead)
+  if (fs.existsSync(publicPath)) {
+    const fileBuffer = fs.readFileSync(publicPath);
+    return new NextResponse(new Uint8Array(fileBuffer), {
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
   }
+
+  // 2. Safe Cloud PostgreSQL lookup (non-blocking fallback)
+  try {
+    const dbRecord = await db.systemSetting.findUnique({
+      where: { key: KEY },
+    });
+
+    if (dbRecord?.value && dbRecord.value.startsWith("data:image/")) {
+      const base64Data = dbRecord.value.split(",")[1];
+      if (base64Data) {
+        const fileBuffer = Buffer.from(base64Data, "base64");
+        try {
+          fs.writeFileSync(publicPath, fileBuffer);
+        } catch {}
+        return new NextResponse(new Uint8Array(fileBuffer), {
+          headers: {
+            "Content-Type": "image/png",
+            "Cache-Control": "public, max-age=31536000, immutable",
+          },
+        });
+      }
+    }
+  } catch (err) {
+    console.warn(`[${KEY}] DB lookup skipped/timed out:`, err);
+  }
+
+  // 3. Artifacts Directory Fallback
+  if (fs.existsSync(ARTIFACTS_DIR)) {
+    try {
+      const files = fs.readdirSync(ARTIFACTS_DIR);
+      const match = files.find((f) => f.startsWith(ARTIFACT_PREFIX) && f.endsWith(".png"));
+      if (match) {
+        const artifactPath = path.join(ARTIFACTS_DIR, match);
+        const fileBuffer = fs.readFileSync(artifactPath);
+        try {
+          fs.writeFileSync(publicPath, fileBuffer);
+        } catch {}
+        return new NextResponse(new Uint8Array(fileBuffer), {
+          headers: {
+            "Content-Type": "image/png",
+            "Cache-Control": "public, max-age=31536000, immutable",
+          },
+        });
+      }
+    } catch {}
+  }
+
+  return new NextResponse("Hero image not found", { status: 404 });
 }

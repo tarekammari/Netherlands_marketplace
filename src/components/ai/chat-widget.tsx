@@ -1,27 +1,27 @@
 "use client";
 /**
- * src/components/ai/chat-widget.tsx
- *
- * TBAI Neural Engine Chat Widget — Apple Intelligence Series Design.
- * Listens for global 'open-tbai-chat' event triggered from the hero AI Star button.
+ * TaskBridge AI Chat — professional conversational assistant widget.
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  X, Send, Loader2, User,
-  ExternalLink, ChevronRight, Sparkles, RefreshCw,
+  X, Send, Loader2, User, Bot,
+  ExternalLink, ChevronRight, Sparkles, RefreshCw, Brain, MessageSquare,
 } from "lucide-react";
+import type { AgentAction } from "@/lib/ai/agent-executor";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface TaskCard {
-  id:       string;
-  title:    string;
-  budget:   string;
-  category: string;
-  deadline: string;
-  applyUrl: string;
+  id:          string;
+  title:       string;
+  budget:      string;
+  category:    string;
+  deadline:    string;
+  applyUrl:    string;
+  companyName?: string;
 }
 
 interface Action {
@@ -30,12 +30,17 @@ interface Action {
 }
 
 interface AIMessage {
-  id:        string;
-  role:      "user" | "assistant";
-  text:      string;
-  taskCards?: TaskCard[] | undefined;
-  actions?:   Action[] | undefined;
-  timestamp:  Date;
+  id:               string;
+  role:             "user" | "assistant";
+  text:             string;
+  taskCards?:       TaskCard[]      | undefined;
+  actions?:         Action[]        | undefined;
+  agentActions?:    AgentAction[]   | undefined;
+  suggestedReplies?: string[]        | undefined;
+  timestamp:        Date;
+  intent?:          string          | undefined;
+  confidence?:      number          | undefined;
+  fullAIMode?:      boolean          | undefined;
 }
 
 // ── Markdown-lite renderer ────────────────────────────────────────────────────
@@ -44,6 +49,7 @@ function renderMarkdown(text: string): string {
   return text
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/_(.*?)_/g, "<em>$1</em>")
+    .replace(/^---$/gm, "<hr/>")
     .replace(/\n\n/g, "</p><p>")
     .replace(/\n/g, "<br/>")
     .replace(/^/, "<p>")
@@ -60,7 +66,7 @@ function TypingIndicator() {
   return (
     <div className="tbai-msg tbai-msg--assistant">
       <div className="tbai-avatar tbai-avatar--ai">
-        <Sparkles size={14} />
+        <Bot size={14} />
       </div>
       <div className="tbai-bubble tbai-bubble--assistant tbai-typing">
         <span /><span /><span />
@@ -72,52 +78,69 @@ function TypingIndicator() {
 // ── Quick prompts ────────────────────────────────────────────────────────────
 
 const QUICK_PROMPTS = [
-  { label: "🔍 Find tasks for me",        text: "find me tasks matching my skills" },
-  { label: "💰 Budget advice",             text: "what's a fair budget for a research task?" },
-  { label: "📄 How does escrow work?",     text: "how does the escrow payment work?" },
-  { label: "🎓 Tips to win tasks",         text: "how do I improve my profile to get selected?" },
-  { label: "📊 Platform stats",            text: "how many students and tasks are on TaskBridge?" },
+  { label: "Find tasks",           text: "find me tasks matching my skills" },
+  { label: "Budget advice",        text: "what's a fair budget for a research task?" },
+  { label: "How escrow works",     text: "how does the escrow payment work?" },
+  { label: "Profile tips",         text: "how do I improve my profile to get selected?" },
+  { label: "Write a proposal",     text: "help me write a winning proposal" },
+  { label: "My dashboard",         text: "show me my dashboard summary" },
 ];
+
+// ── Agent Action Chip ─────────────────────────────────────────────────────────
+
+function AgentActionChip({ action }: { action: AgentAction }) {
+  if (!action.url) return null;
+  return (
+    <Link href={action.url} className="tbai-agent-chip">
+      {action.icon && <span className="tbai-chip-icon">{action.icon}</span>}
+      {action.label}
+      <ChevronRight size={10} style={{ opacity: 0.6, flexShrink: 0 }} />
+    </Link>
+  );
+}
 
 // ── Main Widget ───────────────────────────────────────────────────────────────
 
 export function ChatWidget() {
-  const [open,      setOpen]      = useState(false);
-  const [input,     setInput]     = useState("");
-  const [messages,  setMessages]  = useState<AIMessage[]>([]);
-  const [loading,   setLoading]   = useState(false);
-  const [sessionId, setSessionId] = useState<string | undefined>();
+  const router = useRouter();
+  const [open,        setOpen]        = useState(false);
+  const [input,       setInput]       = useState("");
+  const [messages,    setMessages]    = useState<AIMessage[]>([]);
+  const [loading,     setLoading]     = useState(false);
+  const [sessionId,   setSessionId]   = useState<string | undefined>();
+  const [fullAIMode,  setFullAIMode]  = useState(true);
 
   const bottomRef  = useRef<HTMLDivElement>(null);
   const inputRef   = useRef<HTMLTextAreaElement>(null);
 
-  // Listen for global open event (from Hero Apple AI Star button)
   useEffect(() => {
     const handleOpenAI = () => setOpen(true);
     window.addEventListener("open-tbai-chat", handleOpenAI);
     return () => window.removeEventListener("open-tbai-chat", handleOpenAI);
   }, []);
 
-  // Scroll to bottom on new message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // Focus input when opened
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open]);
 
-  // Welcome message on first open
   useEffect(() => {
     if (open && messages.length === 0) {
       setMessages([{
         id:        "welcome",
         role:      "assistant",
-        text:      "✨ **TaskBridge AI Intelligence Active**\n\nPowered by Apple-series design standards and domain intelligence. I can match tasks to your skills, calculate escrow payouts, analyze budgets, and draft legal contracts.\n\nWhat would you like assistance with?",
-        actions:   [
+        text:      "**Welcome to TaskBridge AI.**\n\nI'm your assistant for finding tasks, understanding payments, planning budgets, and navigating the platform.\n\nWhat would you like to discuss today?",
+        suggestedReplies: [
+          "Find tasks for me",
+          "How does escrow work?",
+          "Help me write a proposal",
+        ],
+        actions: [
           { label: "Browse Tasks",  url: "/tasks"    },
           { label: "Register Free", url: "/register" },
         ],
@@ -131,12 +154,14 @@ export function ChatWidget() {
     if (!msg || loading) return;
 
     setInput("");
+    if (inputRef.current) inputRef.current.style.height = "auto";
 
     const userMsg: AIMessage = {
       id:        crypto.randomUUID(),
       role:      "user",
       text:      msg,
       timestamp: new Date(),
+      fullAIMode,
     };
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
@@ -145,37 +170,62 @@ export function ChatWidget() {
       const res  = await fetch("/api/ai/chat", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ message: msg, sessionId }),
+        body:    JSON.stringify({
+          message:     msg,
+          sessionId,
+          fullAIMode,
+          currentPage: typeof window !== "undefined" ? window.location.pathname : undefined,
+        }),
       });
       const json = await res.json() as {
         success:   boolean;
         sessionId: string;
-        response:  { text: string; taskCards?: TaskCard[]; actions?: Action[] };
+        response:  {
+          text:              string;
+          taskCards?:        TaskCard[];
+          actions?:          Action[];
+          agentActions?:     AgentAction[];
+          suggestedReplies?: string[];
+          intent?:           string;
+          confidence?:       number;
+        };
         error?:    string;
       };
 
       if (json.sessionId) setSessionId(json.sessionId);
 
       const aiMsg: AIMessage = {
-        id:        crypto.randomUUID(),
-        role:      "assistant",
-        text:      json.success ? json.response.text : (json.error ?? "Something went wrong."),
-        taskCards: json.response?.taskCards,
-        actions:   json.response?.actions,
-        timestamp: new Date(),
+        id:               crypto.randomUUID(),
+        role:             "assistant",
+        text:             json.success ? json.response.text : (json.error ?? "Something went wrong."),
+        taskCards:        json.response?.taskCards,
+        actions:          json.response?.actions,
+        agentActions:     json.response?.agentActions,
+        suggestedReplies: json.response?.suggestedReplies,
+        intent:           json.response?.intent,
+        confidence:       json.response?.confidence,
+        timestamp:        new Date(),
+        fullAIMode,
       };
       setMessages((prev) => [...prev, aiMsg]);
+
+      // Auto-execute agent navigation actions
+      const autoAction = json.response?.agentActions?.find((a) => a.autoExecute && a.url);
+      if (autoAction?.url) {
+        setTimeout(() => router.push(autoAction.url!), 700);
+      }
     } catch {
       setMessages((prev) => [...prev, {
         id:        crypto.randomUUID(),
         role:      "assistant",
-        text:      "⚠️ TBAI Engine is reconnecting. Please try again in a moment.",
+        text:      "Connection interrupted. Please try again in a moment.",
+        suggestedReplies: ["Find tasks for me", "How does escrow work?"],
         timestamp: new Date(),
       }]);
     } finally {
       setLoading(false);
     }
-  }, [input, loading, sessionId]);
+  }, [input, loading, sessionId, fullAIMode, router]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -184,244 +234,347 @@ export function ChatWidget() {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+  };
+
   const clearChat = () => {
     setMessages([]);
     setSessionId(undefined);
   };
 
+  const lastAssistantIdx = messages.reduce(
+    (acc, m, i) => (m.role === "assistant" ? i : acc),
+    -1
+  );
+
   return (
     <>
-      {/* ── Global styles ──────────────────────────────────────────────────── */}
       <style>{`
         .tbai-widget {
           position: fixed; bottom: 24px; right: 24px; z-index: 9999;
-          font-family: 'Inter', system-ui, sans-serif;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
 
-        /* Panel — Apple Intelligence aesthetic */
         .tbai-panel {
           position: fixed; bottom: 84px; right: 24px;
-          width: 390px; max-width: calc(100vw - 32px);
-          height: 600px; max-height: calc(100vh - 110px);
+          width: 420px; max-width: calc(100vw - 32px);
+          height: 640px; max-height: calc(100vh - 110px);
           background: #ffffff;
-          border-radius: 24px;
-          border: 1px solid rgba(255, 125, 0, 0.25);
-          box-shadow: 0 24px 80px rgba(249,115,22,0.18), 0 8px 30px rgba(0,0,0,0.12);
+          border-radius: 16px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 20px 60px rgba(15,23,42,0.12), 0 4px 16px rgba(15,23,42,0.06);
           display: flex; flex-direction: column; overflow: hidden;
           transform-origin: bottom right;
-          animation: tbai-open 0.28s cubic-bezier(0.16,1,0.3,1);
+          animation: tbai-open 0.25s cubic-bezier(0.16,1,0.3,1);
         }
         @keyframes tbai-open {
-          from { transform: scale(0.85) translateY(20px); opacity: 0; }
+          from { transform: scale(0.92) translateY(12px); opacity: 0; }
           to   { transform: scale(1) translateY(0); opacity: 1; }
         }
 
-        /* Panel header — Apple warm radiant glow */
+        /* Header */
         .tbai-header {
           padding: 16px 18px;
-          background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 40%, #ea580c 100%);
+          background: #0f172a;
           display: flex; align-items: center; gap: 12px;
-          border-bottom: 1px solid rgba(255,255,255,0.15);
           flex-shrink: 0;
         }
         .tbai-header-icon {
-          width: 38px; height: 38px; border-radius: 12px;
-          background: linear-gradient(135deg, #ff6b00, #ff0055);
+          width: 40px; height: 40px; border-radius: 12px;
+          background: linear-gradient(135deg, #f97316, #ea580c);
           display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0; box-shadow: 0 4px 14px rgba(255,107,0,0.5);
+          flex-shrink: 0;
         }
-        .tbai-header-text h3 { font-size: 14px; font-weight: 800; color: white; margin: 0; }
-        .tbai-header-text p  { font-size: 11px; color: #ffedd5; margin: 2px 0 0; font-family: monospace; }
-        .tbai-header-actions { margin-left: auto; display: flex; gap: 4px; }
+        .tbai-header-text h3 {
+          font-size: 15px; font-weight: 600; color: #f8fafc; margin: 0;
+          letter-spacing: -0.01em;
+        }
+        .tbai-header-text p {
+          font-size: 12px; color: #94a3b8; margin: 2px 0 0;
+          display: flex; align-items: center; gap: 6px;
+        }
+        .tbai-status-dot {
+          width: 7px; height: 7px; border-radius: 50%;
+          background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.6);
+        }
+        .tbai-header-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
         .tbai-icon-btn {
-          width: 30px; height: 30px; border-radius: 8px;
-          background: rgba(255,255,255,0.15); border: none; cursor: pointer;
+          width: 32px; height: 32px; border-radius: 8px;
+          background: rgba(255,255,255,0.08); border: none; cursor: pointer;
           display: flex; align-items: center; justify-content: center;
-          color: white; transition: background 0.15s;
+          color: #cbd5e1; transition: background 0.15s, color 0.15s;
         }
-        .tbai-icon-btn:hover { background: rgba(255,255,255,0.25); }
+        .tbai-icon-btn:hover { background: rgba(255,255,255,0.15); color: #f8fafc; }
 
-        /* Live indicator */
-        .tbai-live {
+        .tbai-mode-toggle {
           display: flex; align-items: center; gap: 5px;
-          padding: 3px 9px; border-radius: 100px;
-          background: rgba(249,115,22,0.25); border: 1px solid rgba(249,115,22,0.4);
-          font-size: 10px; font-weight: 800; color: #ffedd5;
-          letter-spacing: 0.05em;
+          padding: 5px 10px; border-radius: 8px;
+          font-size: 11px; font-weight: 600; cursor: pointer;
+          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(255,255,255,0.06);
+          color: #94a3b8; transition: all 0.2s;
         }
-        .tbai-live span {
-          width: 6px; height: 6px; border-radius: 50%; background: #f97316;
-          animation: tbai-blink 1.4s infinite;
+        .tbai-mode-toggle:hover { background: rgba(255,255,255,0.12); color: #e2e8f0; }
+        .tbai-mode-toggle--active {
+          background: rgba(99,102,241,0.25);
+          border-color: rgba(129,140,248,0.4);
+          color: #c7d2fe;
         }
-        @keyframes tbai-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* Messages */
+        /* Messages area */
         .tbai-messages {
-          flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px;
-          scrollbar-width: thin; scrollbar-color: #e2e8f0 transparent;
+          flex: 1; overflow-y: auto; padding: 20px 16px;
+          display: flex; flex-direction: column; gap: 16px;
+          background: #f8fafc;
+          scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent;
         }
-        .tbai-messages::-webkit-scrollbar { width: 4px; }
-        .tbai-messages::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
-        .tbai-msg { display: flex; gap: 8px; align-items: flex-end; }
+        .tbai-messages::-webkit-scrollbar { width: 5px; }
+        .tbai-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .tbai-msg { display: flex; gap: 10px; align-items: flex-start; }
         .tbai-msg--user { flex-direction: row-reverse; }
+
         .tbai-avatar {
-          width: 28px; height: 28px; border-radius: 8px;
+          width: 32px; height: 32px; border-radius: 10px;
           display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0; font-size: 12px; font-weight: 900;
+          flex-shrink: 0;
         }
-        .tbai-avatar--ai   { background: linear-gradient(135deg, #ff6b00, #ea580c); color: white; }
-        .tbai-avatar--user { background: #f1f5f9; color: #64748b; }
+        .tbai-avatar--ai {
+          background: #fff; border: 1px solid #e2e8f0;
+          color: #f97316;
+        }
+        .tbai-avatar--user {
+          background: #e2e8f0; color: #475569;
+        }
+
+        .tbai-msg-body { max-width: 82%; display: flex; flex-direction: column; gap: 6px; }
+        .tbai-msg--user .tbai-msg-body { align-items: flex-end; }
+
         .tbai-bubble {
-          max-width: 84%; border-radius: 16px; padding: 10px 14px;
-          font-size: 13px; line-height: 1.55; word-break: break-word;
+          border-radius: 14px; padding: 12px 14px;
+          font-size: 13.5px; line-height: 1.6; word-break: break-word;
         }
         .tbai-bubble--assistant {
-          background: #fffbf7; border: 1px solid #fed7aa; color: #0f172a;
-          border-bottom-left-radius: 4px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          color: #1e293b;
+          border-top-left-radius: 4px;
+          box-shadow: 0 1px 3px rgba(15,23,42,0.04);
         }
         .tbai-bubble--user {
-          background: linear-gradient(135deg, #ea580c, #c2410c);
-          color: white; border-bottom-right-radius: 4px;
+          background: #0f172a;
+          color: #f1f5f9;
+          border-top-right-radius: 4px;
         }
         .tbai-bubble p  { margin: 0 0 8px; }
         .tbai-bubble p:last-child { margin: 0; }
-        .tbai-bubble strong { font-weight: 700; }
+        .tbai-bubble strong { font-weight: 600; color: inherit; }
         .tbai-bubble em { font-style: italic; color: #64748b; }
-        .tbai-table-row { display: flex; gap: 12px; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
+        .tbai-bubble hr { border: none; border-top: 1px solid #e2e8f0; margin: 10px 0; }
+        .tbai-table-row {
+          display: flex; gap: 12px; font-size: 12px;
+          padding: 5px 0; border-bottom: 1px solid #f1f5f9;
+        }
         .tbai-table-row span { flex: 1; }
 
-        /* Typing dots */
-        .tbai-typing { display: flex; align-items: center; gap: 4px; padding: 12px 16px; }
+        .tbai-time {
+          font-size: 10px; color: #94a3b8; padding: 0 4px;
+        }
+
+        /* Suggested replies */
+        .tbai-suggestions {
+          display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px;
+        }
+        .tbai-suggestion {
+          font-size: 12px; font-weight: 500; padding: 6px 12px;
+          border-radius: 20px; border: 1px solid #e2e8f0;
+          background: #ffffff; cursor: pointer; color: #475569;
+          transition: all 0.15s; white-space: nowrap;
+        }
+        .tbai-suggestion:hover:not(:disabled) {
+          border-color: #f97316; color: #ea580c;
+          background: #fff7ed;
+        }
+        .tbai-suggestion:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Typing */
+        .tbai-typing { display: flex; align-items: center; gap: 5px; padding: 14px 16px; }
         .tbai-typing span {
-          width: 7px; height: 7px; border-radius: 50%; background: #f97316;
+          width: 6px; height: 6px; border-radius: 50%; background: #94a3b8;
           animation: tbai-dot 1.2s infinite ease-in-out;
         }
         .tbai-typing span:nth-child(2) { animation-delay: 0.2s; }
         .tbai-typing span:nth-child(3) { animation-delay: 0.4s; }
         @keyframes tbai-dot {
-          0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
-          40%            { transform: scale(1.15); opacity: 1; }
+          0%, 80%, 100% { transform: scale(0.8); opacity: 0.4; }
+          40%            { transform: scale(1.1); opacity: 1; }
         }
 
         /* Task cards */
-        .tbai-cards { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+        .tbai-cards { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
         .tbai-card {
           display: flex; align-items: center; gap: 10px;
-          padding: 10px 12px; border-radius: 12px;
-          border: 1px solid #fed7aa; background: white; text-decoration: none;
-          transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+          padding: 10px 12px; border-radius: 10px;
+          border: 1px solid #e2e8f0; background: #f8fafc; text-decoration: none;
+          transition: border-color 0.15s, box-shadow 0.15s;
         }
         .tbai-card:hover {
-          border-color: #f97316; box-shadow: 0 4px 12px rgba(249,115,22,0.15);
-          transform: translateY(-1px);
+          border-color: #f97316; box-shadow: 0 2px 8px rgba(249,115,22,0.1);
         }
         .tbai-card-cat {
-          font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
-          padding: 3px 7px; border-radius: 6px; background: #fff7ed; color: #c2410c; white-space: nowrap;
+          font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+          padding: 3px 7px; border-radius: 4px; background: #fff7ed; color: #c2410c;
+          white-space: nowrap;
         }
-        .tbai-card-title { font-size: 12px; font-weight: 700; color: #0f172a; flex: 1; }
-        .tbai-card-budget { font-size: 12px; font-weight: 800; color: #059669; white-space: nowrap; }
+        .tbai-card-info { flex: 1; min-width: 0; }
+        .tbai-card-title {
+          font-size: 12px; font-weight: 600; color: #0f172a;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .tbai-card-company { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+        .tbai-card-budget { font-size: 12px; font-weight: 700; color: #059669; flex-shrink: 0; }
 
-        /* Actions */
-        .tbai-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        /* Action links */
+        .tbai-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
         .tbai-action {
           display: inline-flex; align-items: center; gap: 4px;
-          padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 700;
-          border: 1px solid #fed7aa; background: #fff7ed; color: #9a3412;
-          text-decoration: none; transition: background 0.15s, border-color 0.15s;
+          padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+          border: 1px solid #e2e8f0; background: #f8fafc; color: #475569;
+          text-decoration: none; transition: all 0.15s;
         }
-        .tbai-action:hover { background: #ffedd5; border-color: #f97316; }
+        .tbai-action:hover { background: #fff7ed; border-color: #f97316; color: #ea580c; }
+
+        .tbai-agent-chips {
+          display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+          padding-top: 10px; border-top: 1px solid #f1f5f9;
+        }
+        .tbai-agent-chip {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 5px 11px; border-radius: 20px; font-size: 11px; font-weight: 600;
+          border: 1px solid #c7d2fe; background: #eef2ff; color: #4338ca;
+          text-decoration: none; transition: all 0.15s;
+        }
+        .tbai-agent-chip:hover { background: #e0e7ff; border-color: #6366f1; }
 
         /* Quick prompts */
-        .tbai-quick { padding: 10px 14px; border-top: 1px solid #f1f5f9; display: flex; flex-wrap: wrap; gap: 5px; }
-        .tbai-quick-btn {
-          font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
-          border: 1px solid #fed7aa; background: white; cursor: pointer; color: #9a3412;
-          transition: background 0.15s, border-color 0.15s; white-space: nowrap;
+        .tbai-quick {
+          padding: 10px 14px; border-top: 1px solid #e2e8f0;
+          display: flex; flex-wrap: wrap; gap: 6px; background: #ffffff;
         }
-        .tbai-quick-btn:hover { background: #fff7ed; border-color: #f97316; color: #ea580c; }
+        .tbai-quick-label {
+          width: 100%; font-size: 11px; font-weight: 600; color: #94a3b8;
+          text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;
+        }
+        .tbai-quick-btn {
+          font-size: 12px; font-weight: 500; padding: 6px 12px; border-radius: 20px;
+          border: 1px solid #e2e8f0; background: #f8fafc; cursor: pointer; color: #475569;
+          transition: all 0.15s;
+        }
+        .tbai-quick-btn:hover:not(:disabled) {
+          background: #fff7ed; border-color: #f97316; color: #ea580c;
+        }
+        .tbai-quick-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Input row */
+        /* Input */
         .tbai-input-row {
-          padding: 12px 14px; border-top: 1px solid #f1f5f9;
+          padding: 12px 14px; border-top: 1px solid #e2e8f0;
           display: flex; gap: 8px; align-items: flex-end;
-          background: white; flex-shrink: 0;
+          background: #ffffff; flex-shrink: 0;
         }
         .tbai-textarea {
           flex: 1; resize: none; border: 1px solid #e2e8f0; border-radius: 12px;
-          padding: 10px 12px; font-size: 13px; font-family: inherit;
-          line-height: 1.5; outline: none; min-height: 40px; max-height: 100px;
-          color: #0f172a; background: #fafbfc;
-          transition: border-color 0.15s, box-shadow 0.15s;
+          padding: 10px 14px; font-size: 13.5px; font-family: inherit;
+          line-height: 1.5; outline: none; min-height: 42px; max-height: 120px;
+          color: #0f172a; background: #f8fafc;
+          transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
         }
-        .tbai-textarea:focus { border-color: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,0.2); background: white; }
+        .tbai-textarea:focus {
+          border-color: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+          background: #ffffff;
+        }
         .tbai-textarea::placeholder { color: #94a3b8; }
         .tbai-send {
-          width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
-          background: linear-gradient(135deg, #ff6b00, #ea580c);
-          border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-          color: white; transition: opacity 0.15s, transform 0.15s;
+          width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+          background: #f97316; border: none; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          color: white; transition: background 0.15s, transform 0.15s;
         }
-        .tbai-send:hover:not(:disabled) { opacity: 0.9; transform: scale(1.05); }
-        .tbai-send:disabled { opacity: 0.4; cursor: not-allowed; }
-        .tbai-time { font-size: 9px; color: #cbd5e1; text-align: center; margin: 2px 0; }
+        .tbai-send:hover:not(:disabled) { background: #ea580c; transform: scale(1.03); }
+        .tbai-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        .tbai-footer {
+          padding: 8px 16px; font-size: 10px; color: #94a3b8;
+          text-align: center; border-top: 1px solid #f1f5f9;
+          background: #fafbfc; flex-shrink: 0;
+        }
       `}</style>
 
       <div className="tbai-widget">
-        {/* ── Chat panel (opens when AIHeroStar button is clicked) ── */}
         {open && (
           <div className="tbai-panel">
 
             {/* Header */}
             <div className="tbai-header">
               <div className="tbai-header-icon">
-                <Sparkles size={20} color="white" />
+                <MessageSquare size={20} color="white" />
               </div>
               <div className="tbai-header-text">
-                <h3>TaskBridge AI</h3>
-                <p>Apple-Series Intelligence Module</p>
-              </div>
-              <div className="tbai-live">
-                <span />
-                ACTIVE
+                <h3>TaskBridge Assistant</h3>
+                <p>
+                  <span className="tbai-status-dot" />
+                  Online · Ready to help
+                </p>
               </div>
               <div className="tbai-header-actions">
-                <button className="tbai-icon-btn" onClick={clearChat} title="Clear conversation">
-                  <RefreshCw size={13} />
+                <button
+                  className={`tbai-mode-toggle ${fullAIMode ? "tbai-mode-toggle--active" : ""}`}
+                  onClick={() => setFullAIMode((v) => !v)}
+                  title={fullAIMode ? "Smart mode on" : "Enable smart mode"}
+                >
+                  {fullAIMode ? <Brain size={12} /> : <Sparkles size={12} />}
+                  {fullAIMode ? "Smart" : "Basic"}
                 </button>
-                <button className="tbai-icon-btn" onClick={() => setOpen(false)} title="Close drawer">
-                  <X size={14} />
+                <button className="tbai-icon-btn" onClick={clearChat} title="New conversation">
+                  <RefreshCw size={14} />
+                </button>
+                <button className="tbai-icon-btn" onClick={() => setOpen(false)} title="Close">
+                  <X size={16} />
                 </button>
               </div>
             </div>
 
             {/* Messages */}
             <div className="tbai-messages">
-              {messages.map((msg) => (
+              {messages.map((msg, idx) => (
                 <div key={msg.id}>
                   <div className={`tbai-msg tbai-msg--${msg.role}`}>
                     <div className={`tbai-avatar tbai-avatar--${msg.role === "assistant" ? "ai" : "user"}`}>
-                      {msg.role === "assistant" ? <Sparkles size={14} /> : <User size={13} />}
+                      {msg.role === "assistant"
+                        ? <Bot size={15} />
+                        : <User size={14} />}
                     </div>
-                    <div>
-                      <div className={`tbai-bubble tbai-bubble--${msg.role === "assistant" ? "assistant" : "user"}`}>
+                    <div className="tbai-msg-body">
+                      <div className={`tbai-bubble tbai-bubble--${msg.role}`}>
                         {msg.role === "assistant" ? (
-                          <div
-                            dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.text) }}
-                          />
+                          <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.text) }} />
                         ) : (
                           msg.text
                         )}
 
-                        {/* Task cards */}
                         {msg.taskCards && msg.taskCards.length > 0 && (
                           <div className="tbai-cards">
                             {msg.taskCards.map((card) => (
                               <Link key={card.id} href={card.applyUrl} className="tbai-card" target="_blank">
-                                <div>
-                                  <div className="tbai-card-cat">{card.category}</div>
+                                <div className="tbai-card-cat">{card.category}</div>
+                                <div className="tbai-card-info">
+                                  <div className="tbai-card-title">{card.title}</div>
+                                  {card.companyName && (
+                                    <div className="tbai-card-company">{card.companyName}</div>
+                                  )}
                                 </div>
-                                <div className="tbai-card-title">{card.title}</div>
                                 <div className="tbai-card-budget">{card.budget}</div>
                                 <ChevronRight size={12} color="#94a3b8" style={{ flexShrink: 0 }} />
                               </Link>
@@ -429,21 +582,52 @@ export function ChatWidget() {
                           </div>
                         )}
 
-                        {/* Action buttons */}
                         {msg.actions && msg.actions.length > 0 && (
                           <div className="tbai-actions">
                             {msg.actions.map((action) => (
                               <Link key={action.url} href={action.url} className="tbai-action">
                                 {action.label}
-                                <ExternalLink size={10} />
+                                <ExternalLink size={9} />
                               </Link>
                             ))}
                           </div>
                         )}
+
+                        {fullAIMode && msg.agentActions && msg.agentActions.filter((a) => a.url).length > 0 && (
+                          <div className="tbai-agent-chips">
+                            {msg.agentActions
+                              .filter((a) => a.url)
+                              .slice(0, 4)
+                              .map((action, i) => (
+                                <AgentActionChip key={i} action={action} />
+                              ))}
+                          </div>
+                        )}
                       </div>
+
                       <div className="tbai-time">
                         {msg.timestamp.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
                       </div>
+
+                      {/* Suggested replies — only on latest assistant message */}
+                      {msg.role === "assistant" &&
+                        msg.suggestedReplies &&
+                        msg.suggestedReplies.length > 0 &&
+                        idx === lastAssistantIdx &&
+                        !loading && (
+                        <div className="tbai-suggestions">
+                          {msg.suggestedReplies.map((reply) => (
+                            <button
+                              key={reply}
+                              className="tbai-suggestion"
+                              onClick={() => sendMessage(reply)}
+                              disabled={loading}
+                            >
+                              {reply}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -453,9 +637,10 @@ export function ChatWidget() {
               <div ref={bottomRef} />
             </div>
 
-            {/* Quick prompts */}
+            {/* Quick prompts — shown at start */}
             {messages.length <= 1 && (
               <div className="tbai-quick">
+                <span className="tbai-quick-label">Suggested topics</span>
                 {QUICK_PROMPTS.map((p) => (
                   <button
                     key={p.text}
@@ -469,15 +654,15 @@ export function ChatWidget() {
               </div>
             )}
 
-            {/* Input row */}
+            {/* Input */}
             <div className="tbai-input-row">
               <textarea
                 ref={inputRef}
                 className="tbai-textarea"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask TaskBridge AI about tasks, escrow, or contracts…"
+                placeholder="Ask about tasks, payments, proposals…"
                 rows={1}
                 maxLength={1000}
                 disabled={loading}
@@ -489,17 +674,15 @@ export function ChatWidget() {
                 aria-label="Send message"
               >
                 {loading
-                  ? <Loader2 size={16} className="tbai-spin" style={{ animation: "spin 1s linear infinite" }} />
+                  ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
                   : <Send size={16} />
                 }
               </button>
             </div>
 
-            {/* Footer */}
             <div className="tbai-footer">
-              Powered by <strong>TaskBridge AI</strong> · Apple Series Design
+              TaskBridge AI · Secure &amp; private conversation
             </div>
-
           </div>
         )}
       </div>

@@ -71,6 +71,9 @@ const envSchema = z.object({
 
   // ── Logging ───────────────────────────────────────────────────────────────
   LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info"),
+
+  // ── TBAI Proactive Agent (optional — cron job secret) ────────────────────
+  CRON_SECRET: z.string().optional(),
 });
 
 // ─── Parse & validate ─────────────────────────────────────────────────────────

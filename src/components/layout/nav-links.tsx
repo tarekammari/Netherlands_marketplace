@@ -10,16 +10,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AdminNavMenu } from "./admin-nav-menu";
+import type { UserRole } from "@prisma/client";
 
 interface NavLinksProps {
   links: Array<{ href: string; label: string }>;
+  userRole?: UserRole | undefined;
 }
 
-export function NavLinks({ links }: NavLinksProps) {
+export function NavLinks({ links, userRole }: NavLinksProps) {
   const pathname = usePathname();
 
   return (
     <div className="hidden min-[850px]:flex items-center justify-center flex-nowrap shrink-0 whitespace-nowrap gap-1.5 min-[900px]:gap-2.5 lg:gap-4 xl:gap-5">
+      {/* If User is Admin, show single Admin Panel sliding dropdown first */}
+      {userRole === "ADMIN" && <AdminNavMenu />}
+
       {links.map(({ href, label }) => {
         const isActive = (() => {
           if (pathname === href) return true;

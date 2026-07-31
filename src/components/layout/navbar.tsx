@@ -26,16 +26,11 @@ const NAV_LINKS: Record<UserRole, Array<{ href: string; label: string }>> = {
     { href: "/enterprise/dashboard", label: "Dashboard" },
   ],
   ADMIN: [
-    { href: "/admin",          label: "Overview" },
-    { href: "/admin/users",    label: "Users" },
-    { href: "/admin/tasks",    label: "Tasks" },
-    { href: "/admin/payments", label: "Payments" },
-    { href: "/admin/disputes", label: "Disputes" },
-    { href: "/admin/settings", label: "Settings" },
-    { href: "/about",          label: "About Us" },
-    { href: "/pricing",        label: "Pricing" },
-    { href: "/faq",            label: "FAQ" },
-    { href: "/contact",        label: "Contact" },
+    { href: "/tasks",   label: "Browse tasks" },
+    { href: "/about",   label: "About Us" },
+    { href: "/pricing", label: "Pricing" },
+    { href: "/faq",     label: "FAQ" },
+    { href: "/contact", label: "Contact" },
   ],
 };
 
@@ -70,7 +65,7 @@ export async function Navbar() {
 
         {/* Center Nav Links - Symmetrically Centered in middle of Navbar */}
         <div className="flex-1 flex justify-center px-1 min-[950px]:px-4">
-          <NavLinks links={links} />
+          <NavLinks links={links} userRole={user?.role} />
         </div>
 
         {/* Right Side Actions & Mobile Menu Toggle */}

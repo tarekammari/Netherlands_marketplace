@@ -8,11 +8,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { db, getPrismaModel } from "@/lib/db";
 import { buildTaskVector } from "@/lib/ai/tfidf";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const prisma = db as any;
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,22 +27,25 @@ export async function POST(req: NextRequest) {
     const userId  = session?.user?.id;
 
     // Store the event
-    await prisma.aIEvent.create({
-      data: {
-        userId,
-        eventType: body.eventType as never,
-        payload:   body.payload ?? {},
-        sessionId: body.sessionId,
-      },
-    });
+    const aiEventModel = getPrismaModel("AIEvent");
+    if (aiEventModel) {
+      await aiEventModel.create({
+        data: {
+          userId,
+          eventType: body.eventType as never,
+          payload:   body.payload ?? {},
+          sessionId: body.sessionId,
+        },
+      }).catch(() => {});
+    }
 
     // When a task is viewed/created, refresh its TF-IDF vector
     if (
       ["TASK_VIEW", "TASK_APPLY"].includes(body.eventType) &&
-      typeof body.payload.taskId === "string"
+      typeof body.payload?.taskId === "string"
     ) {
       const task = await db.task.findUnique({
-        where:  { id: body.payload.taskId },
+        where:  { id: body.payload.taskId as string },
         select: { title: true, description: true, skillsRequired: true },
       });
       if (task) {
@@ -54,18 +54,19 @@ export async function POST(req: NextRequest) {
           task.description ?? "",
           task.skillsRequired
         );
-        await prisma.aITaskVector.upsert({
-          where:  { taskId: body.payload.taskId },
-          create: { taskId: body.payload.taskId, keywords, tfidfJson },
-          update: { keywords, tfidfJson },
-        });
+        const taskVectorModel = getPrismaModel("AITaskVector");
+        if (taskVectorModel) {
+          await taskVectorModel.upsert({
+            where:  { taskId: body.payload.taskId as string },
+            create: { taskId: body.payload.taskId as string, keywords, tfidfJson },
+            update: { keywords, tfidfJson },
+          }).catch(() => {});
+        }
       }
     }
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    // Non-critical — silently swallow errors
-    console.error("[TBAI Track]", err);
-    return NextResponse.json({ success: false }, { status: 200 });
+    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
   }
 }

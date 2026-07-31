@@ -15,16 +15,15 @@ const mappings = [
   { prefix: 'pricing_escrow_security', target: 'pricing-escrow.png' },
 ];
 
-const files = fs.readdirSync(artifactsDir);
-
-for (const map of mappings) {
-  const file = files.find(f => f.startsWith(map.prefix) && f.endsWith('.png'));
-  if (file) {
-    const src = path.join(artifactsDir, file);
-    const dest = path.join(publicDir, map.target);
-    fs.copyFileSync(src, dest);
-    console.log(`Copied ${file} -> public/${map.target}`);
-  } else {
-    console.log(`Not found for ${map.prefix}`);
+if (fs.existsSync(artifactsDir)) {
+  const files = fs.readdirSync(artifactsDir);
+  for (const map of mappings) {
+    const file = files.find(f => f.startsWith(map.prefix) && f.endsWith('.png'));
+    if (file) {
+      const src = path.join(artifactsDir, file);
+      const dest = path.join(publicDir, map.target);
+      fs.copyFileSync(src, dest);
+      console.log(`Successfully copied ${file} to public/${map.target}`);
+    }
   }
 }

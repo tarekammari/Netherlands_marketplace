@@ -100,6 +100,7 @@ export default async function AdminPage() {
               { href: "/admin/tasks",    label: "💼 Manage Tasks" },
               { href: "/admin/payments", label: "💳 Payments" },
               { href: "/admin/disputes", label: "⚖️ Disputes" },
+              { href: "/admin/ai",       label: "🤖 AI Intelligence" },
               { href: "/admin/settings", label: "⚙️ System Settings" },
             ].map(({ href, label }) => (
               <Link

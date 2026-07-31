@@ -8,7 +8,7 @@
  * All learning is stored in PostgreSQL — zero external dependencies.
  */
 
-import { db } from "@/lib/db";
+import { db, getPrismaModel } from "@/lib/db";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const prisma = db as any;
@@ -24,11 +24,16 @@ async function upsertInsight(
   confidence: number,
   sampleSize: number
 ) {
-  await prisma.aIInsight.upsert({
-    where:  { key },
-    create: { key, value, confidence, sampleSize },
-    update: { value, confidence, sampleSize },
-  });
+  try {
+    const aiInsightModel = getPrismaModel("AIInsight");
+    if (aiInsightModel) {
+      await aiInsightModel.upsert({
+        where:  { key },
+        create: { key, value, confidence, sampleSize },
+        update: { value, confidence, sampleSize },
+      });
+    }
+  } catch {}
 }
 
 // ── Compute average budget by category ───────────────────────────────────────
@@ -163,29 +168,44 @@ export async function runLearningCycle(): Promise<void> {
 // ── Check if we should trigger a learning cycle ───────────────────────────────
 
 export async function maybeTriggerLearning(): Promise<void> {
-  const count = await prisma.aIEvent.count({
-    where: { eventType: "CHAT_MESSAGE" },
-  });
-  if (count % LEARN_EVERY_N_EVENTS === 0) {
-    // Non-blocking — fire and forget
-    runLearningCycle().catch(console.error);
-  }
+  try {
+    const aiEventModel = getPrismaModel("AIEvent");
+    if (!aiEventModel) return;
+    const count = await aiEventModel.count({
+      where: { eventType: "CHAT_MESSAGE" },
+    });
+    if (count % LEARN_EVERY_N_EVENTS === 0) {
+      runLearningCycle().catch(console.error);
+    }
+  } catch {}
 }
 
 // ── Read an insight value (with fallback) ─────────────────────────────────────
 
 export async function getInsight(key: string, fallback = ""): Promise<string> {
-  const insight = await prisma.aIInsight.findUnique({ where: { key } });
-  return insight?.value ?? fallback;
+  try {
+    const aiInsightModel = getPrismaModel("AIInsight");
+    if (!aiInsightModel) return fallback;
+    const insight = await aiInsightModel.findUnique({ where: { key } });
+    return insight?.value ?? fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 // ── Read multiple insights at once ────────────────────────────────────────────
 
 export async function getInsights(keys: string[]): Promise<Record<string, string>> {
-  const insights = await prisma.aIInsight.findMany({
-    where: { key: { in: keys } },
-  });
-  const result: Record<string, string> = {};
-  for (const ins of insights) result[ins.key] = ins.value;
-  return result;
+  try {
+    const aiInsightModel = getPrismaModel("AIInsight");
+    if (!aiInsightModel) return {};
+    const insights = await aiInsightModel.findMany({
+      where: { key: { in: keys } },
+    });
+    const result: Record<string, string> = {};
+    for (const ins of insights) result[ins.key] = ins.value;
+    return result;
+  } catch {
+    return {};
+  }
 }

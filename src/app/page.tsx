@@ -144,11 +144,19 @@ export default async function HomePage() {
             {/* 3 Luxury Pillar Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-              {/* Feature 1 */}
-              <div className="group p-6 rounded-2xl bg-[#fafafb] border border-neutral-200/80 hover:border-orange-400 hover:bg-white hover:shadow-lg transition-all duration-300 flex flex-col justify-between">
+              {/* Feature 1: Verified Dutch Talent -> /tasks */}
+              <Link
+                href="/tasks"
+                className="group p-6 rounded-2xl bg-[#fafafb] border border-neutral-200/80 hover:border-orange-400 hover:bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between cursor-pointer"
+              >
                 <div>
-                  <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-200/80 flex items-center justify-center mb-5 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300">
-                    <GraduationCap size={22} />
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-200/80 flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 shadow-sm">
+                      <GraduationCap size={22} />
+                    </div>
+                    <span className="font-mono text-[10px] uppercase font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-200/60 group-hover:bg-orange-600 group-hover:text-white transition-all flex items-center gap-1">
+                      Browse Talent &rarr;
+                    </span>
                   </div>
                   <h3 className="text-base font-bold text-neutral-900 mb-2 uppercase tracking-wide group-hover:text-orange-600 transition-colors">
                     Verified Dutch Talent
@@ -157,34 +165,52 @@ export default async function HomePage() {
                     Domain-checked student specialists from TU Delft, UvA, TU/e, and Erasmus ready for short-term deliverables.
                   </p>
                 </div>
-                <div className="pt-4 border-t border-neutral-200/60 flex items-center gap-1.5 font-mono text-[11px] font-bold text-orange-600">
+                <div className="pt-4 border-t border-neutral-200/60 flex items-center justify-between font-mono text-[11px] font-bold text-orange-600">
                   <span>TU Delft &middot; UvA &middot; EUR</span>
+                  <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                 </div>
-              </div>
+              </Link>
 
-              {/* Feature 2 */}
-              <div className="group p-6 rounded-2xl bg-[#fafafb] border border-neutral-200/80 hover:border-orange-400 hover:bg-white hover:shadow-lg transition-all duration-300 flex flex-col justify-between">
+              {/* Feature 2: Stripe Escrow Security -> /pricing */}
+              <Link
+                href="/pricing"
+                className="group p-6 rounded-2xl bg-[#fafafb] border border-neutral-200/80 hover:border-emerald-500 hover:bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between cursor-pointer"
+              >
                 <div>
-                  <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-200/80 flex items-center justify-center mb-5 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300">
-                    <ShieldCheck size={22} />
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-200/80 flex items-center justify-center text-orange-600 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300 shadow-sm">
+                      <ShieldCheck size={22} />
+                    </div>
+                    <span className="font-mono text-[10px] uppercase font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 group-hover:bg-emerald-600 group-hover:text-white transition-all flex items-center gap-1">
+                      Escrow Info &rarr;
+                    </span>
                   </div>
-                  <h3 className="text-base font-bold text-neutral-900 mb-2 uppercase tracking-wide group-hover:text-orange-600 transition-colors">
+                  <h3 className="text-base font-bold text-neutral-900 mb-2 uppercase tracking-wide group-hover:text-emerald-600 transition-colors">
                     Stripe Escrow Security
                   </h3>
                   <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed font-normal mb-6">
                     Zero financial risk. Funds are safely held in Stripe escrow and automatically released per approved milestone.
                   </p>
                 </div>
-                <div className="pt-4 border-t border-neutral-200/60 flex items-center gap-1.5 font-mono text-[11px] font-bold text-emerald-600">
+                <div className="pt-4 border-t border-neutral-200/60 flex items-center justify-between font-mono text-[11px] font-bold text-emerald-600">
                   <span>&euro;0 Risk &middot; Milestone Payouts</span>
+                  <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                 </div>
-              </div>
+              </Link>
 
-              {/* Feature 3 */}
-              <div className="group p-6 rounded-2xl bg-[#fafafb] border border-neutral-200/80 hover:border-orange-400 hover:bg-white hover:shadow-lg transition-all duration-300 flex flex-col justify-between">
+              {/* Feature 3: Dutch Law Contracts -> /about */}
+              <Link
+                href="/about"
+                className="group p-6 rounded-2xl bg-[#fafafb] border border-neutral-200/80 hover:border-orange-400 hover:bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between cursor-pointer"
+              >
                 <div>
-                  <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-200/80 flex items-center justify-center mb-5 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300">
-                    <FileCheck size={22} />
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-200/80 flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300 shadow-sm">
+                      <FileCheck size={22} />
+                    </div>
+                    <span className="font-mono text-[10px] uppercase font-bold text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded border border-neutral-200 group-hover:bg-orange-600 group-hover:text-white transition-all flex items-center gap-1">
+                      Dutch Law Info &rarr;
+                    </span>
                   </div>
                   <h3 className="text-base font-bold text-neutral-900 mb-2 uppercase tracking-wide group-hover:text-orange-600 transition-colors">
                     Dutch Law Contracts
@@ -193,10 +219,11 @@ export default async function HomePage() {
                     Automated, digitally signed contracts compliant with Netherlands freelancing and IP governance rules.
                   </p>
                 </div>
-                <div className="pt-4 border-t border-neutral-200/60 flex items-center gap-1.5 font-mono text-[11px] font-bold text-neutral-700">
+                <div className="pt-4 border-t border-neutral-200/60 flex items-center justify-between font-mono text-[11px] font-bold text-neutral-700 group-hover:text-orange-600">
                   <span>Digital Instant Sign</span>
+                  <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                 </div>
-              </div>
+              </Link>
 
             </div>
 

@@ -2,14 +2,15 @@
  * src/app/api/ai/chat/route.ts
  *
  * POST /api/ai/chat
- * Receives a user message and returns a TBAI response.
+ * Receives a user message and returns a TBAI v2 response.
  * Persists conversation to AIChatSession/AIChatMessage tables.
+ * Supports fullAIMode flag for memory-backed personalized responses.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { processMessage } from "@/lib/ai/engine";
+import { getPrismaModel } from "@/lib/db";
+import { processMessage, type ConversationMessage } from "@/lib/ai/engine";
 import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
@@ -25,8 +26,10 @@ export async function POST(req: NextRequest) {
 
     // 2. Parse request
     const body = await req.json() as {
-      message:   string;
-      sessionId?: string;
+      message:      string;
+      sessionId?:   string;
+      fullAIMode?:  boolean;  // Full AI Mode flag
+      currentPage?: string;   // current page hint
     };
 
     if (!body.message?.trim()) {
@@ -37,61 +40,116 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Resolve session / auth context
-    const session  = await auth();
-    const userId   = session?.user?.id;
-    const userRole = session?.user?.role;
+    const startTime = Date.now();
+    const session   = await auth();
+    const userId    = session?.user?.id;
+    const userRole  = session?.user?.role;
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "127.0.0.1";
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const prisma = db as any;
+    const sessionModel = getPrismaModel("AIChatSession");
+    const messageModel = getPrismaModel("AIChatMessage");
 
-    // Get or create chat session
+    // Get or create chat session (resilient DB write)
     let sessionId = body.sessionId;
-    if (!sessionId) {
-      const chatSession = await prisma.aiChatSession.create({
-        data: {
-          userId,
-          context: { role: userRole, ip },
-        },
-      });
-      sessionId = chatSession.id;
+    if (!sessionId && sessionModel) {
+      try {
+        const chatSession = await sessionModel.create({
+          data: {
+            userId,
+            context: {
+              role:        userRole,
+              ip,
+              fullAIMode:  body.fullAIMode ?? false,
+              currentPage: body.currentPage ?? null,
+            },
+          },
+        });
+        sessionId = chatSession.id;
+      } catch (err) {
+        console.warn("[TBAI Chat] Unable to persist chat session:", err);
+      }
     }
 
-    // 4. Store the user message
-    await prisma.aiChatMessage.create({
-      data: {
-        sessionId,
-        role:    "USER",
-        content: body.message,
-      },
-    });
+    // 4. Load recent conversation history for contextual replies
+    let history: ConversationMessage[] = [];
+    if (sessionId && messageModel) {
+      try {
+        const priorMessages = await messageModel.findMany({
+          where:   { sessionId },
+          orderBy: { createdAt: "asc" },
+          take:    20,
+        });
+        history = priorMessages.map((m: { role: string; content: string; intent?: string | null; metadata?: { intent?: string } | null }) => ({
+          role:    m.role === "USER" ? "user" as const : "assistant" as const,
+          content: m.content,
+          intent:  m.intent ?? (m.metadata as { intent?: string } | null)?.intent ?? undefined,
+        }));
+      } catch (err) {
+        console.warn("[TBAI Chat] Unable to load conversation history:", err);
+      }
+    }
 
-    // 5. Process with TBAI engine
+    // 5. Store the user message (resilient DB write)
+    if (sessionId && messageModel) {
+      try {
+        await messageModel.create({
+          data: {
+            sessionId,
+            role:    "USER",
+            content: body.message,
+          },
+        });
+      } catch (err) {
+        console.warn("[TBAI Chat] Unable to persist user message:", err);
+      }
+    }
+
+    // 6. Process with TBAI v2 engine
     const response = await processMessage(body.message, {
       userId,
       userRole,
       sessionId,
+      fullAIMode:  body.fullAIMode ?? false,
+      currentPage: body.currentPage,
+      history,
     });
 
-    // 6. Store the assistant response
-    await prisma.aiChatMessage.create({
-      data: {
-        sessionId,
-        role:     "ASSISTANT",
-        content:  response.text,
-        intent:   response.intent,
-        metadata: {
-          taskCards: response.taskCards,
-          actions:   response.actions,
-        },
-      },
-    });
+    const responseMs = Date.now() - startTime;
 
-    // 7. Return response
+    // 7. Store the assistant response (resilient DB write)
+    if (sessionId && messageModel) {
+      try {
+        await messageModel.create({
+          data: {
+            sessionId,
+            role:     "ASSISTANT",
+            content:  response.text,
+            intent:   response.intent,
+            metadata: {
+              taskCards:       response.taskCards,
+              actions:         response.actions,
+              agentActions:    response.agentActions,
+              suggestedReplies: response.suggestedReplies,
+              responseMs,
+              fullAIMode:      body.fullAIMode ?? false,
+              memoryUpdated:   response.memoryUpdated ?? false,
+            },
+          },
+        });
+      } catch (err) {
+        console.warn("[TBAI Chat] Unable to persist assistant response:", err);
+      }
+    }
+
+    // 8. Return response
     return NextResponse.json({
       success: true,
-      sessionId,
+      sessionId: sessionId ?? "temp-session",
       response,
+      meta: {
+        responseMs,
+        fullAIMode: body.fullAIMode ?? false,
+      },
     });
 
   } catch (err) {
@@ -109,12 +167,18 @@ export async function GET(req: NextRequest) {
   const sessionId = req.nextUrl.searchParams.get("sessionId");
   if (!sessionId) return NextResponse.json({ messages: [] });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const messages = await (db as any).aiChatMessage.findMany({
-    where:   { sessionId },
-    orderBy: { createdAt: "asc" },
-    take:    50,
-  });
+  const messageModel = getPrismaModel("AIChatMessage");
+  if (!messageModel) return NextResponse.json({ messages: [] });
 
-  return NextResponse.json({ messages });
+  try {
+    const messages = await messageModel.findMany({
+      where:   { sessionId },
+      orderBy: { createdAt: "asc" },
+      take:    50,
+    });
+    return NextResponse.json({ messages });
+  } catch {
+    return NextResponse.json({ messages: [] });
+  }
 }
+
