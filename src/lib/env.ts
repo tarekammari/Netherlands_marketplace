@@ -38,9 +38,9 @@ const envSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3000"),
   NEXT_PUBLIC_APP_NAME: z.string().default("TaskBridge NL"),
 
-  // ── Database (with fallback for static builds) ───────────
-  DATABASE_URL: z.string().default("postgresql://postgres:postgres@localhost:5432/taskbridge_nl?schema=public"),
-  DIRECT_URL:   z.string().default("postgresql://postgres:postgres@localhost:5432/taskbridge_nl?schema=public"),
+  // ── Database (required in production — no localhost fallback on Vercel) ──
+  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  DIRECT_URL:   z.string().min(1, "DIRECT_URL is required"),
 
   // ── Auth (with fallback for static builds) ────────────────────────────────
   AUTH_SECRET: z.string().default("64_char_random_secret_string_for_taskbridge_nl_auth_secret_key_1234"),
@@ -78,9 +78,23 @@ const envSchema = z.object({
 
 // ─── Parse & validate ─────────────────────────────────────────────────────────
 
-const _parsed = envSchema.safeParse(process.env);
+const LOCAL_DB =
+  "postgresql://postgres:postgres@localhost:5432/taskbridge_nl?schema=public";
 
-export const env: z.infer<typeof envSchema> = _parsed.success ? _parsed.data : envSchema.parse({});
+const envInput = {
+  ...process.env,
+  DATABASE_URL: process.env.DATABASE_URL || (isDev ? LOCAL_DB : ""),
+  DIRECT_URL:   process.env.DIRECT_URL   || (isDev ? LOCAL_DB : ""),
+};
+
+export const env: z.infer<typeof envSchema> = envSchema.parse(envInput);
+
+if (!isDev && env.DATABASE_URL.includes("localhost")) {
+  console.error(
+    "[TaskBridge] DATABASE_URL points to localhost in production. " +
+    "Add your Neon PostgreSQL URL in Vercel → Settings → Environment Variables."
+  );
+}
 
 // ─── Dev-mode warnings for optional service keys ──────────────────────────────
 // These log once at startup so developers know which services aren't configured.

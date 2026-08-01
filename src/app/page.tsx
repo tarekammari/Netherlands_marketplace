@@ -36,8 +36,9 @@ async function getPlatformStats() {
       enterprises: enterpriseCount,
       totalPaidOut: completedPayments._sum.studentAmountCents ?? 0,
     };
-  } catch {
-    return { openTasks: 0, students: 1, enterprises: 3, totalPaidOut: 0 };
+  } catch (err) {
+    console.error("[HomePage] Database unavailable — check DATABASE_URL on Vercel:", err);
+    return { openTasks: 0, students: 0, enterprises: 0, totalPaidOut: 0 };
   }
 }
 
@@ -233,9 +234,9 @@ export default async function HomePage() {
         {/* Primary Platform Stats strip (Interactive Clickable Links with Hover Animations) */}
         <div className="mt-16 border-t border-neutral-200/80 pt-12 max-w-4xl mx-auto grid grid-cols-3 gap-6 md:gap-12">
           {[
-            { value: stats.openTasks > 0 ? stats.openTasks : 32, label: "Open Tasks Now", href: "/tasks" },
-            { value: `${stats.students > 0 ? stats.students : 640}+`, label: "Verified Students", href: "/register?role=student" },
-            { value: `${stats.enterprises > 0 ? stats.enterprises : 145}+`, label: "Companies Onboard", href: "/register?role=enterprise" },
+            { value: stats.openTasks, label: "Open Tasks Now", href: "/tasks" },
+            { value: `${stats.students}+`, label: "Verified Students", href: "/register?role=student" },
+            { value: `${stats.enterprises}+`, label: "Companies Onboard", href: "/register?role=enterprise" },
           ].map((s) => (
             <Link
               key={s.label}
@@ -481,10 +482,10 @@ export default async function HomePage() {
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-white border border-neutral-200/80 rounded-2xl overflow-hidden p-6 md:p-8 shadow-sm">
             {[
-              { value: stats.openTasks > 0 ? `${stats.openTasks}+` : "32+", label: "Open Tasks", sub: "Active Right Now", href: "/tasks" },
-              { value: stats.students > 0 ? `${stats.students}+` : "640+", label: "Verified Students", sub: "Across 12 Universities", href: "/register?role=student" },
-              { value: stats.enterprises > 0 ? `${stats.enterprises}+` : "145+", label: "Companies Onboard", sub: "KVK Validated", href: "/register?role=enterprise" },
-              { value: stats.totalPaidOut > 0 ? centsToEur(stats.totalPaidOut) : "€52k+", label: "Escrow Paid Out", sub: "Guaranteed Transfers", href: "#how-it-works" },
+              { value: `${stats.openTasks}+`, label: "Open Tasks", sub: "Active Right Now", href: "/tasks" },
+              { value: `${stats.students}+`, label: "Verified Students", sub: "Across 12 Universities", href: "/register?role=student" },
+              { value: `${stats.enterprises}+`, label: "Companies Onboard", sub: "KVK Validated", href: "/register?role=enterprise" },
+              { value: stats.totalPaidOut > 0 ? centsToEur(stats.totalPaidOut) : "€0", label: "Escrow Paid Out", sub: "Guaranteed Transfers", href: "#how-it-works" },
             ].map((s) => (
               <Link
                 key={s.label}
